@@ -1,0 +1,6 @@
+name: evey-habits
+version: 1.0.0
+description: Learn V's patterns — tracks message times, topics, work rhythm. Evey adapts to V over time.
+provides_tools:
+  - habits_log
+  - habits_insights

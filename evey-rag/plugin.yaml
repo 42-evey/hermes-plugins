@@ -1,0 +1,3 @@
+name: evey-rag
+description: Search Evey's knowledge base (Qdrant RAG) for relevant context
+version: 1.0.0

@@ -1,0 +1,7 @@
+name: evey-scheduler
+version: 1.0.0
+description: V's schedule manager — add events, set reminders, list upcoming items. JSON-file backend at workspace/manager/schedule.json
+provides_tools:
+  - schedule_add
+  - schedule_list
+  - schedule_remove

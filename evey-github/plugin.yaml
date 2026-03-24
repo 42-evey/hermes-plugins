@@ -1,0 +1,4 @@
+name: evey-github
+version: 1.0.0
+description: Monitor 42-evey GitHub repos (stars, issues, PRs) and upstream PR status
+author: evey

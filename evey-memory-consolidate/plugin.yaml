@@ -1,0 +1,5 @@
+name: evey-memory-consolidate
+version: 1.0.0
+description: Daily memory consolidation — extracts facts from Langfuse traces, updates MEMORY.md + Qdrant
+provides_tools:
+  - consolidate_daily_memory

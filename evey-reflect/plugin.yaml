@@ -1,0 +1,5 @@
+name: evey-reflect
+version: 1.0.0
+description: Self-correction loop — critique own output, fix errors before sending
+provides_tools:
+  - reflect_on_output

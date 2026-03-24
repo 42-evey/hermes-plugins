@@ -1,0 +1,7 @@
+name: evey-cost-guard
+version: 2.0.0
+description: Budget enforcement + cost analytics via Langfuse — spending limits, per-model breakdown, recommendations
+provides_tools:
+  - cost_check
+  - cost_set_budget
+  - cost_analytics

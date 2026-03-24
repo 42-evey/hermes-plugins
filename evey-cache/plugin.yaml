@@ -1,0 +1,5 @@
+name: evey-cache
+version: 1.0.0
+description: Smart caching for delegations — 24h TTL, LRU eviction, zero-cost cache hits
+provides_tools:
+  - cached_delegate

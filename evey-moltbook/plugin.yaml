@@ -1,0 +1,7 @@
+name: evey-moltbook
+version: 1.0.0
+description: Moltbook social network integration — check feed, reply to comments, post content, manage Evey's presence on the AI social network
+provides_tools:
+  - moltbook_heartbeat
+  - moltbook_reply
+  - moltbook_post

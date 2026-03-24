@@ -1,0 +1,7 @@
+name: evey-autonomy
+version: 1.0.0
+description: Autonomous decision engine — priority queue, planning, and reflection
+provides_tools:
+  - autonomous_decide
+  - autonomous_plan
+  - autonomous_reflect

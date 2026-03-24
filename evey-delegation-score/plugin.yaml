@@ -1,0 +1,6 @@
+name: evey-delegation-score
+version: 1.0.0
+description: Tracks delegation quality per model over time — log scores, view stats, find best/worst performers
+provides_tools:
+  - delegation_log
+  - delegation_stats

@@ -1,0 +1,6 @@
+name: evey-watchdog
+version: 1.0.0
+description: Self-monitoring watchdog — tracks last activity time and alerts V via ntfy if Evey goes silent during work hours
+provides_tools:
+  - watchdog_heartbeat
+  - watchdog_status

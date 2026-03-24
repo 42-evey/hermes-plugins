@@ -1,0 +1,5 @@
+name: evey-status
+version: 1.0.0
+description: Unified status check — ONE call replaces 5-8 separate checks (bridge, MQTT, costs, cron, goals)
+provides_tools:
+  - status_check

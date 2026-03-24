@@ -1,0 +1,5 @@
+name: evey-news
+version: 1.0.0
+description: AI news monitor — searches for trending AI developments via SearXNG and surfaces interesting findings
+provides_tools:
+  - news_scan

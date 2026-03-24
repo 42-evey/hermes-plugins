@@ -1,0 +1,5 @@
+name: evey-digest
+version: 1.0.0
+description: Morning digest — aggregates overnight costs, cron health, bridge tasks, goals, and alerts
+provides_tools:
+  - daily_digest

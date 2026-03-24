@@ -1,0 +1,5 @@
+name: evey-delegate-model
+version: 1.0.0
+description: Adds per-task model override to delegate_task (fixes upstream bug)
+provides_tools:
+  - delegate_with_model

@@ -1,0 +1,5 @@
+name: evey-goals
+version: 1.0.0
+description: Autonomous goal management — read, add, complete, and evolve goals
+provides_tools:
+  - evey_goals

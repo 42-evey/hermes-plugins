@@ -1,0 +1,5 @@
+name: evey-identity
+version: 1.0.0
+description: Self-updating identity — evolves SOUL.md based on experiences, learns from interactions
+provides_tools:
+  - update_identity

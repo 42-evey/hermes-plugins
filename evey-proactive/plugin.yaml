@@ -1,0 +1,6 @@
+name: evey-proactive
+version: 1.0.0
+description: Proactive messaging system — lets Evey surface insights, nudges, and observations to V during work hours with an interruption budget
+provides_tools:
+  - proactive_nudge
+  - proactive_budget

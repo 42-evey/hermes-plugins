@@ -1,0 +1,5 @@
+name: evey-telemetry
+version: 1.0.0
+description: Structured logging and observability for Evey's agent stack. Emits JSON events for tool calls, delegations, errors, and performance metrics.
+provides_tools:
+  - telemetry_query

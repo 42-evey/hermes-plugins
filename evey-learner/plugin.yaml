@@ -1,0 +1,6 @@
+name: evey-learner
+version: 1.0.0
+description: Proactive learning — extract lessons from interactions, apply to future tasks
+provides_tools:
+  - learn_from_interaction
+  - apply_learnings

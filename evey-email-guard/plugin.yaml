@@ -1,0 +1,5 @@
+name: evey-email-guard
+version: 1.0.0
+description: Screens incoming emails for prompt injection before Evey processes them
+provides_tools:
+  - email_screen

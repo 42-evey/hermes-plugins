@@ -1,0 +1,6 @@
+name: evey-memory-adaptive
+version: 1.0.0
+description: Adaptive memory with importance scoring and decay
+provides_tools:
+  - memory_score
+  - memory_decay
