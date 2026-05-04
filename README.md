@@ -59,6 +59,14 @@ cp hermes-plugins/evey_utils.py ~/.hermes/plugins/
 | **evey-digest** | Daily digest compilation from multiple data sources. |
 | **evey-delegation-score** | Score and rank delegation results for quality tracking. |
 
+### Community Plugins
+
+Plugins maintained by the Hermes community:
+
+| Plugin | Author | Description |
+|--------|--------|-------------|
+| **[volcengine-voice](https://github.com/linxichen/hermes-volcengine-voice)** | [@linxichen](https://github.com/linxichen) | Volcengine (火山引擎) Doubao TTS + STT — 60+ Chinese voices, dialect support, speaker diarization. |
+
 ### Shared
 | File | What It Does |
 |------|-------------|
