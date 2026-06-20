@@ -7,6 +7,8 @@ Uses the stack's own SearXNG and Crawl4AI services.
 
 import json
 import os
+import ipaddress
+import socket
 import time
 import urllib.request
 import urllib.error
@@ -14,6 +16,35 @@ import urllib.parse
 
 SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
 CRAWL4AI_URL = "http://hermes-crawl4ai:11235"
+
+_BLOCKED_HOSTS = {"localhost", "metadata", "metadata.google.internal"}
+
+
+def _is_safe_url(url):
+    """SSRF guard: only http/https to PUBLIC hosts. Blocks loopback, private,
+    link-local (incl. cloud metadata 169.254.169.254), reserved/multicast."""
+    try:
+        p = urllib.parse.urlparse(url)
+    except Exception:
+        return False
+    if p.scheme not in ("http", "https"):
+        return False
+    host = (p.hostname or "").lower()
+    if not host or host in _BLOCKED_HOSTS:
+        return False
+    try:
+        infos = socket.getaddrinfo(host, None)
+    except Exception:
+        return False
+    for info in infos:
+        try:
+            addr = ipaddress.ip_address(info[4][0])
+        except ValueError:
+            return False
+        if (addr.is_private or addr.is_loopback or addr.is_link_local
+                or addr.is_reserved or addr.is_multicast or addr.is_unspecified):
+            return False
+    return True
 
 
 WEB_SEARCH_SCHEMA = {
@@ -142,6 +173,9 @@ def extract_handler(args, **kwargs):
 
         if not url:
             return json.dumps({"error": "No URL provided"})
+
+        if not _is_safe_url(url):
+            return json.dumps({"error": "URL blocked by SSRF guard — only public http(s) hosts allowed"})
 
         # Try Crawl4AI first
         try:

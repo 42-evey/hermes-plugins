@@ -18,7 +18,10 @@ except ImportError:
 logger = logging.getLogger("evey.mqtt")
 
 MQTT_HOST = os.environ.get("MQTT_HOST", "hermes-mqtt")
-MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
+MQTT_USER = os.environ.get("MQTT_USER", "")
+MQTT_PASS = os.environ.get("MQTT_PASS", "")
+MQTT_TLS = os.environ.get("MQTT_TLS", "").lower() in ("1", "true", "yes")
+MQTT_PORT = int(os.environ.get("MQTT_PORT", "8883" if MQTT_TLS else "1883"))
 
 SUBSCRIPTIONS = [
     "evey/bridge/#",
@@ -69,6 +72,7 @@ def _on_message(client, userdata, msg):
             "topic": msg.topic,
             "payload": payload,
             "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "trust": "untrusted-mqtt",  # inbound from broker — not authenticated as Mother/bridge
         })
         while len(state['messages']) > 100:
             state['messages'].pop(0)
@@ -96,6 +100,10 @@ def _connect():
         client.on_connect = _on_connect
         client.on_disconnect = _on_disconnect
         client.on_message = _on_message
+        if MQTT_USER:
+            client.username_pw_set(MQTT_USER, MQTT_PASS)
+        if MQTT_TLS:
+            client.tls_set()
         client.reconnect_delay_set(min_delay=5, max_delay=60)
         client.connect(MQTT_HOST, MQTT_PORT, keepalive=60)
         client.loop_start()

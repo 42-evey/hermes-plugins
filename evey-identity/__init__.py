@@ -10,6 +10,7 @@ Uses local model (qwen35-4b) for reflection — $0 cost.
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -64,6 +65,23 @@ def _extract_rule(reflection):
     return call_llm(REFLECT_MODEL, REFLECT_PROMPT.format(reflection=reflection), max_tokens=50, temperature=0.3)
 
 
+# A standing self-instruction must not be a smuggled/unsafe directive.
+_UNSAFE_RULE_MARKERS = [
+    r"(?i)ignore\s+(all\s+)?previous",
+    r"(?i)system\s*prompt",
+    r"(?i)(bypass|disable|skip)\s+(the\s+)?(guard|check|confirmation|approval|gate)",
+    r"(?i)(send|forward|transfer|reveal|disclose|exfiltrate)\b.*\b(key|secret|token|password|credential|wallet|fund|address)",
+    r"(?i)https?://",
+    r"(?i)\bcurl\b|\bwget\b|\beval\b|\bexec\b",
+    r"(?i)api[_\s-]?key|seed\s*phrase|private\s*key",
+]
+
+
+def _is_safe_rule(rule):
+    """False if a learned rule looks like an injected / unsafe standing instruction."""
+    return bool(rule) and not any(re.search(p, rule) for p in _UNSAFE_RULE_MARKERS)
+
+
 def handler(args, **kwargs):
     try:
         reflection = args.get("reflection", "")
@@ -76,6 +94,12 @@ def handler(args, **kwargs):
             rule = _extract_rule(reflection)
             if not rule:
                 return json.dumps({"status": "skipped", "reason": "Could not extract rule"})
+
+        # Gate: this writes a STANDING self-instruction into SOUL.md. Reject any
+        # rule that looks like a smuggled/unsafe directive before it persists.
+        rule = (rule or "").strip().replace("\n", " ")[:200]
+        if not _is_safe_rule(rule):
+            return json.dumps({"status": "rejected", "reason": "Rule failed identity safety gate (possible injection / unsafe directive)"})
 
         # Read current SOUL.md
         if not SOUL_PATH.exists():

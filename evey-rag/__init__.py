@@ -95,6 +95,7 @@ def knowledge_search(query, limit=5, doc_type=None):
             results.append({
                 "source": p.get("source", "unknown"),
                 "type": p.get("type", "unknown"),
+                "trust": p.get("trust", "unverified"),
                 "description": p.get("description", ""),
                 "score": round(hit.get("score", 0), 3),
                 "content": p.get("content", "")[:2000],
