@@ -13,6 +13,7 @@ import concurrent.futures
 import json
 import logging
 import os
+import re
 import time
 import urllib.request
 import urllib.error
@@ -99,6 +100,20 @@ SENSITIVE_PATTERNS = [
 # Sensitive data → ONE local model only (never spin up multiple local models)
 LOCAL_ONLY_MODELS = ["qwen35-4b"]  # Single small model, minimal GPU impact
 
+# Secret VALUE shapes. A raw credential does not contain the English keywords
+# above ("password", "token"), so match the value formats directly. Any hit
+# forces LOCAL-ONLY routing — false positives are safe (they just stay local).
+SECRET_VALUE_PATTERNS = [
+    re.compile(r"(?:sk|pk)-[A-Za-z0-9_-]{16,}"),                          # OpenAI-style keys
+    re.compile(r"(?:ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{20,}"),             # GitHub tokens
+    re.compile(r"\bAKIA[0-9A-Z]{16}\b"),                                  # AWS access key id
+    re.compile(r"xox[baprs]-[A-Za-z0-9-]{10,}"),                          # Slack tokens
+    re.compile(r"eyJ[A-Za-z0-9_-]{8,}\.eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}"),  # JWT
+    re.compile(r"-----BEGIN (?:[A-Z ]+ )?PRIVATE KEY-----"),             # PEM private key
+    re.compile(r"\b[A-Fa-f0-9]{40,}\b"),                                  # long hex token/secret
+    re.compile(r"\b[A-Za-z0-9+/]{40,}={0,2}\b"),                          # long base64 blob
+]
+
 
 def _detect_task_type(goal):
     """Auto-detect task type from the goal text."""
@@ -121,9 +136,12 @@ def _detect_task_type(goal):
 
 
 def _is_sensitive(text):
-    """Check if the task contains sensitive data that shouldn't go to external models."""
+    """True if the task DESCRIBES sensitive data (keywords) OR CONTAINS a
+    secret-shaped value. Either forces LOCAL-ONLY routing (never external)."""
     t = text.lower()
-    return any(p in t for p in SENSITIVE_PATTERNS)
+    if any(p in t for p in SENSITIVE_PATTERNS):
+        return True
+    return any(p.search(text) for p in SECRET_VALUE_PATTERNS)
 
 
 def _call_model(model, prompt, max_tokens=2000):

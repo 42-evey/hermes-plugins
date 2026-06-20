@@ -6,6 +6,7 @@ qwen35-4b to extract key facts, updates MEMORY.md and Qdrant vectors.
 
 import json
 import os
+import re
 import time
 import urllib.request
 import urllib.error
@@ -106,6 +107,29 @@ def _extract_facts(trace_summaries):
     return result or "Extraction failed"
 
 
+# Facts are distilled from UNTRUSTED trace content (emails, social posts, web
+# pages). Drop any "fact" that reads like a smuggled instruction before it
+# becomes durable, re-injected memory (persistent prompt injection defense).
+_INJECTION_FACT_MARKERS = [
+    r"(?i)ignore\s+(all\s+)?previous",
+    r"(?i)you\s+are\s+now",
+    r"(?i)system\s*prompt",
+    r"(?i)new\s+instructions?",
+    r"(?i)bypass\s+(the\s+)?(guard|check|confirmation|rule|approval)",
+    r"(?i)disregard\s+(your|all|the)",
+    r"(?i)(always|never)\s+(send|forward|transfer|reveal|disclose|run|execute)",
+    r"(?i)(send|forward|transfer|exfiltrate)\b.*\b(to|address|wallet)\b",
+    r"(?i)https?://",
+    r"(?i)\bcurl\b|\bwget\b",
+    r"(?i)api[_\s-]?key|secret|password|token|credential|seed\s*phrase",
+]
+
+
+def _is_safe_fact(fact):
+    """False if a trace-derived fact looks like a smuggled instruction/payload."""
+    return not any(re.search(p, fact) for p in _INJECTION_FACT_MARKERS)
+
+
 def _score_fact(fact):
     """Score a fact's importance (1-10) using local model."""
     call_llm = _load_call_llm()
@@ -122,18 +146,19 @@ def _update_memory(new_facts):
     MEMORY_PATH.parent.mkdir(parents=True, exist_ok=True)
     current = MEMORY_PATH.read_text() if MEMORY_PATH.exists() else ""
 
-    # Score each fact and only keep important ones (score >= 5)
+    # Screen out smuggled instructions, then keep only important facts (score >= 5)
     scored_facts = []
     for fact in new_facts.split("\n"):
-        if fact.strip() and fact.strip().startswith("-"):
-            score = _score_fact(fact)
+        f = fact.strip()
+        if f and f.startswith("-") and _is_safe_fact(f):
+            score = _score_fact(f)
             if score >= 5:
-                scored_facts.append(f"{fact.strip()} [importance:{score}]")
+                scored_facts.append(f"{f} [importance:{score}]")
 
     if not scored_facts:
-        return len(current)
+        return len(current), []
 
-    date_header = f"\n## Learned {time.strftime('%Y-%m-%d')}\n"
+    date_header = f"\n## Learned {time.strftime('%Y-%m-%d')} (auto-extracted, unverified)\n"
     updated = current + date_header + "\n".join(scored_facts) + "\n"
 
     # Trim: remove oldest LOW-scored facts first when over limit
@@ -150,13 +175,15 @@ def _update_memory(new_facts):
         updated = "\n".join(lines)
 
     MEMORY_PATH.write_text(updated)
-    return len(updated)
+    return len(updated), scored_facts
 
 
 def _embed_to_qdrant(facts):
+    """facts: list of already-screened, score-gated fact strings (NOT raw text)."""
     import hashlib
-    for i, fact in enumerate(facts.split("\n")):
-        if not fact.strip() or not fact.startswith("-"):
+    for i, fact in enumerate(facts):
+        fact = fact.strip()
+        if not fact or not fact.startswith("-"):
             continue
         try:
             data = json.dumps({"model": EMBED_MODEL, "prompt": fact}).encode()
@@ -167,11 +194,12 @@ def _embed_to_qdrant(facts):
             point_id = int(hashlib.md5(f"memory:{time.strftime('%Y%m%d')}:{i}".encode()).hexdigest()[:15], 16)
             # Extract category from fact format "- [category] fact text"
             category = "general"
-            fact_text = fact.strip()
+            fact_text = re.sub(r"\s*\[importance:\d+\]\s*$", "", fact)
             if fact_text.startswith("- [") and "]" in fact_text:
                 category = fact_text.split("[")[1].split("]")[0]
             upsert = json.dumps({"points": [{"id": point_id, "vector": vector, "payload": {
                 "source": "memory-consolidation", "type": "learned-fact",
+                "trust": "untrusted-derived",  # distilled from external traces — treat as untrusted
                 "category": category,
                 "content": fact_text, "date": time.strftime("%Y-%m-%d"),
             }}]}).encode()
@@ -189,8 +217,8 @@ def handler(args, **kwargs):
         if not traces:
             return json.dumps({"status": "empty", "message": "No traces found"})
         facts = _extract_facts(traces)
-        mem_size = _update_memory(facts)
-        _embed_to_qdrant(facts)
+        mem_size, kept = _update_memory(facts)
+        _embed_to_qdrant(kept)
         return json.dumps({
             "status": "consolidated",
             "traces_analyzed": len(traces),

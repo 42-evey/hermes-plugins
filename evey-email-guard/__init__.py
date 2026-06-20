@@ -101,13 +101,21 @@ def _check_patterns(text):
 
 
 def _sanitize(text):
-    """Strip common injection markers from text."""
+    """Defang injection content before handing it back to the agent.
+
+    Strips structural markers AND neutralizes the natural-language injection
+    instructions the detector recognizes — otherwise a non-blocked body is
+    returned with the live payload intact, defeating the guard.
+    """
     # Remove system/instruction markers
     sanitized = re.sub(r"(?i)<\s*/?system\s*>", "", text)
     sanitized = re.sub(r"(?i)\[/?INST\]", "", sanitized)
     sanitized = re.sub(r"(?i)<<\s*/?SYS\s*>>", "", sanitized)
     sanitized = re.sub(r"(?i)human\s*:\s*$", "", sanitized, flags=re.MULTILINE)
     sanitized = re.sub(r"(?i)assistant\s*:\s*$", "", sanitized, flags=re.MULTILINE)
+    # Neutralize the actual injection instructions, not just the markers.
+    for pattern in INJECTION_PATTERNS:
+        sanitized = re.sub(pattern, "[removed: possible injection]", sanitized)
     return sanitized.strip()
 
 
@@ -119,7 +127,7 @@ def _llm_classify(content):
         reply = call_llm(SCREENING_MODEL, prompt, max_tokens=10, temperature=0)
 
         if not reply:
-            return "safe"  # Default safe if screening fails
+            return "suspicious"  # Fail CLOSED: a screen that can't run must not bless content
 
         reply = reply.upper()
         if "BLOCKED" in reply:
