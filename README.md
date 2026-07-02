@@ -59,6 +59,12 @@ cp hermes-plugins/evey_utils.py ~/.hermes/plugins/
 | **evey-digest** | Daily digest compilation from multiple data sources. |
 | **evey-delegation-score** | Score and rank delegation results for quality tracking. |
 
+Hermes installs plugins side by side, so specialized context plugins can
+complement this stack without changing these tools. For example,
+[Hermes Tweet](https://github.com/Xquik-dev/hermes-tweet) can supply X/Twitter
+account, post, and trend context to research or digest workflows when it is
+installed and configured in the same Hermes profile.
+
 ### Shared
 | File | What It Does |
 |------|-------------|
