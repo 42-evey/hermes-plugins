@@ -7,14 +7,14 @@ Config file (optional): ``$HERMES_HOME/evey-autonomy.json``
 
 Example:
 {
-  "operator_name": "Brendan",
-  "timezone": "America/Los_Angeles",
+  "operator_name": "operator",
+  "timezone": "UTC",
   "heavy_model": "claude-sonnet-4-6",
   "cheap_model": "claude-haiku-4-5",
   "projects": [
-    {"name": "aries-app", "path": "/home/node/aries-app", "base_branch": "master", "importance": 9}
+    {"name": "my-app", "path": "/path/to/my-app", "base_branch": "main", "importance": 8}
   ],
-  "bridge_peer_names": ["claude-code", "mother", "pr-agent"],
+  "bridge_peer_names": ["claude-code", "pr-agent"],
   "disabled_sources": []
 }
 """
@@ -37,16 +37,13 @@ CRON_PATH = HERMES_HOME / "cron" / "jobs.json"
 AUTONOMY_LOG = HERMES_HOME / "workspace" / "orchestrator" / "autonomy-log.jsonl"
 
 DEFAULTS = {
-    "operator_name": os.environ.get("HERMES_OPERATOR_NAME", "Brendan"),
-    "timezone": os.environ.get("HERMES_TIMEZONE", "America/Los_Angeles"),
+    "operator_name": os.environ.get("HERMES_OPERATOR_NAME", "operator"),
+    "timezone": os.environ.get("HERMES_TIMEZONE", "UTC"),
     "heavy_model": os.environ.get("HERMES_AUTONOMY_HEAVY_MODEL", "claude-sonnet-4-6"),
     "cheap_model": os.environ.get("HERMES_AUTONOMY_CHEAP_MODEL", "claude-haiku-4-5"),
     "disabled_sources": [],
-    "bridge_peer_names": ["claude-code", "mother", "pr-agent", "copilot"],
-    "projects": [
-        {"name": "aries-app", "path": "/home/node/aries-app", "base_branch": "master", "importance": 9},
-        {"name": "hermes-plugins", "path": str(Path.home() / "hermes-plugins"), "base_branch": "main", "importance": 6},
-    ],
+    "bridge_peer_names": ["claude-code", "pr-agent", "copilot"],
+    "projects": [],
 }
 
 STOPWORDS = {"the", "a", "an", "is", "to", "and", "of", "in", "for", "with", "on", "my", "your"}
@@ -73,8 +70,8 @@ def _safe_read_json(path, default=None):
 def _config():
     cfg = _deep_merge(DEFAULTS, _safe_read_json(CONFIG_PATH, {}))
     # Environment vars win even if a config file exists.
-    cfg["operator_name"] = os.environ.get("HERMES_OPERATOR_NAME", cfg.get("operator_name", "Brendan"))
-    cfg["timezone"] = os.environ.get("HERMES_TIMEZONE", cfg.get("timezone", "America/Los_Angeles"))
+    cfg["operator_name"] = os.environ.get("HERMES_OPERATOR_NAME", cfg.get("operator_name", "operator"))
+    cfg["timezone"] = os.environ.get("HERMES_TIMEZONE", cfg.get("timezone", "UTC"))
     cfg["heavy_model"] = os.environ.get("HERMES_AUTONOMY_HEAVY_MODEL", cfg.get("heavy_model", "claude-sonnet-4-6"))
     cfg["cheap_model"] = os.environ.get("HERMES_AUTONOMY_CHEAP_MODEL", cfg.get("cheap_model", "claude-haiku-4-5"))
     return cfg
@@ -86,7 +83,7 @@ def _model(kind="heavy"):
 
 
 def _get_hour():
-    tz = _config().get("timezone", "America/Los_Angeles")
+    tz = _config().get("timezone", "UTC")
     try:
         import zoneinfo
         from datetime import datetime
@@ -213,14 +210,14 @@ def _collect_bridge():
 def _classify_goal(text):
     t = text.lower()
     for kws, typ in [
-        (["pr", "pull request", "github", "issue", "branch", "merge", "deploy", "aries"], "project_work"),
+        (["pr", "pull request", "github", "issue", "branch", "merge", "deploy"], "project_work"),
         (["code", "plugin", "script", "implement", "fix", "build", "refactor"], "code_change"),
         (["research", "find", "learn", "explore", "investigate"], "research_deep"),
         (["write", "blog", "post", "creative", "content"], "creative_writing"),
         (["monitor", "health", "uptime", "check", "verify"], "health_check"),
         (["memory", "consolidate", "prune"], "memory_maintenance"),
         (["cost", "budget", "spend"], "cost_review"),
-        (["email", "gmail", "receipt", "invoice", "brex"], "email_maintenance"),
+        (["email", "gmail", "receipt", "invoice"], "email_maintenance"),
     ]:
         if any(w in t for w in kws):
             return typ
@@ -243,7 +240,7 @@ def _collect_goals():
                 break
             if in_active and stripped.startswith("- [ ]"):
                 text = stripped[5:].strip()
-                if any(text.lower()[:30] in w for w in recently_worked):
+                if text.lower()[:30] in recently_worked:
                     continue
                 actions.append({
                     "source": "goals", "action": "advance_goal",
@@ -289,7 +286,7 @@ def _collect_cron():
 
 
 def _collect_projects():
-    """Collect low-cost local git project signals for Brendan's active repos."""
+    """Collect low-cost local git project signals for configured local repos."""
     actions = []
     for project in _config().get("projects", []):
         path = Path(project.get("path", "")).expanduser()
@@ -298,10 +295,10 @@ def _collect_projects():
         name = project.get("name") or path.name
         base = project.get("base_branch", "main")
         importance = int(project.get("importance", 6))
-        rc, branch, _ = _run(["git", "branch", "--show-current"], cwd=str(path))
-        rc2, status, _ = _run(["git", "status", "--short"], cwd=str(path))
-        rc3, unpushed, _ = _run(["git", "log", f"origin/{base}..HEAD", "--oneline", "-5"], cwd=str(path))
-        rc4, remote_delta, _ = _run(["git", "status", "--short", "--branch"], cwd=str(path))
+        _, branch, _ = _run(["git", "branch", "--show-current"], cwd=str(path))
+        _, status, _ = _run(["git", "status", "--short"], cwd=str(path))
+        _, unpushed, _ = _run(["git", "log", f"origin/{base}..HEAD", "--oneline", "-5"], cwd=str(path))
+        _, remote_delta, _ = _run(["git", "status", "--short", "--branch"], cwd=str(path))
         detail_parts = []
         if branch:
             detail_parts.append(f"branch={branch}")
@@ -365,7 +362,7 @@ def _routing():
         "research_quick":     {"tools": ["web_search", "web_extract"], "models": [cheap], "cost": "configured"},
         "health_check":       {"tools": ["terminal", "validate_output"], "models": [], "cost": "free/local"},
         "memory_maintenance": {"tools": ["memory_score", "memory_decay", "consolidate_daily_memory"], "models": [cheap], "cost": "configured"},
-        "cost_review":        {"tools": ["hermes insights", "terminal"], "models": [], "cost": "free/local"},
+        "cost_review":        {"tools": ["cost_check", "cost_analytics", "terminal"], "models": [], "cost": "free/local"},
         "goal_review":        {"tools": ["evey_goals"], "models": [], "cost": "free/local"},
         "self_improve":       {"tools": ["reflect_on_output", "update_identity"], "models": [cheap], "cost": "configured"},
         "alert_user":         {"tools": ["send_message"], "models": [], "cost": "free/local"},
@@ -429,7 +426,8 @@ def decide_handler(args, **kwargs):
         unique.sort(key=lambda a: a["priority_score"], reverse=True)
 
         top = unique[0]
-        rt = _routing().get(top.get("task_type", ""), _routing()["simple_answer"])
+        routing = _routing()
+        rt = routing.get(top.get("task_type", ""), routing["simple_answer"])
         decision = {
             "status": "action",
             "action": top["action"],
@@ -477,20 +475,20 @@ def _templates():
             {"step": 3, "action": "Synthesize findings", "tool": "delegate_task", "model": heavy, "cost": "configured"},
         ],
         "code": [
-            {"step": 1, "action": "Inspect repo and requirements", "tool": "terminal/read_file/search_files", "model": "", "cost": "free/local"},
-            {"step": 2, "action": "Implement in branch/worktree", "tool": "delegate_task or patch", "model": heavy, "cost": "configured"},
+            {"step": 1, "action": "Inspect repo and requirements", "tool": "read_file", "model": "", "cost": "free/local"},
+            {"step": 2, "action": "Implement in branch/worktree", "tool": "delegate_task", "model": heavy, "cost": "configured"},
             {"step": 3, "action": "Run targeted tests and validators", "tool": "terminal", "model": "", "cost": "free/local"},
             {"step": 4, "action": "Open/update PR when clean", "tool": "github-pr-workflow", "model": "", "cost": "free/local"},
         ],
         "project": [
             {"step": 1, "action": "Check git status, branch, PRs, CI", "tool": "terminal", "model": "", "cost": "free/local"},
-            {"step": 2, "action": "Fix or review active work", "tool": "delegate_task/patch", "model": heavy, "cost": "configured"},
+            {"step": 2, "action": "Fix or review active work", "tool": "delegate_task", "model": heavy, "cost": "configured"},
             {"step": 3, "action": "Verify and hand off via PR", "tool": "github-pr-workflow", "model": "", "cost": "free/local"},
         ],
         "health": [
             {"step": 1, "action": "Check service/process/runtime status", "tool": "terminal", "model": "", "cost": "free/local"},
-            {"step": 2, "action": "Check cron jobs and logs", "tool": "cronjob/terminal", "model": "", "cost": "free/local"},
-            {"step": 3, "action": "Report or fix actionable issues", "tool": "patch/send_message", "model": cheap, "cost": "configured"},
+            {"step": 2, "action": "Check cron jobs and logs", "tool": "terminal", "model": "", "cost": "free/local"},
+            {"step": 3, "action": "Report or fix actionable issues", "tool": "send_message", "model": cheap, "cost": "configured"},
         ],
         "memory": [
             {"step": 1, "action": "Score memories", "tool": "memory_score", "model": "", "cost": "free/local"},
@@ -504,8 +502,8 @@ def _templates():
         ],
         "email": [
             {"step": 1, "action": "Load Gmail maintenance automation skill", "tool": "skill_view", "model": "", "cost": "free/local"},
-            {"step": 2, "action": "Classify receipts/invoices/promos safely", "tool": "gmail tooling", "model": cheap, "cost": "configured"},
-            {"step": 3, "action": "Forward receipts to Brex and trash safe promos", "tool": "gmail tooling", "model": "", "cost": "free/local"},
+            {"step": 2, "action": "Classify receipts/invoices/promos safely", "tool": "email_screen", "model": cheap, "cost": "configured"},
+            {"step": 3, "action": "Forward receipts and archive safe promos", "tool": "email_screen", "model": "", "cost": "free/local"},
         ],
     }
 
@@ -528,12 +526,13 @@ def plan_handler(args, **kwargs):
         max_steps = min(int(args.get("max_steps", 8)), 12)
         task_type = _classify_goal(goal)
         tpl_key = _TYPE_TO_TEMPLATE.get(task_type, "research")
-        steps = [dict(s) for s in _templates().get(tpl_key, _templates()["research"])][:max_steps]
+        templates = _templates()
+        steps = [dict(s) for s in templates.get(tpl_key, templates["research"])][:max_steps]
 
         if constraints == "fast":
             steps = steps[:2]
         elif constraints == "thorough":
-            steps.append({"step": len(steps) + 1, "action": "Quality reflection", "tool": "reflect_on_output/autonomous_reflect", "model": "", "cost": "free/local"})
+            steps.append({"step": len(steps) + 1, "action": "Quality reflection", "tool": "autonomous_reflect", "model": "", "cost": "free/local"})
 
         for i, s in enumerate(steps):
             s["step"] = i + 1
