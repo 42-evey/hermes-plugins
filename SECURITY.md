@@ -2,15 +2,15 @@
 
 ## Reporting a Vulnerability
 
-If you discover a security vulnerability, please report it responsibly:
+Please report vulnerabilities privately — do not open a public issue.
 
-- **Do NOT** open a public issue
-- Email: security@evey.cc or report via GitHub Security Advisories
-- Include details about the vulnerability and steps to reproduce
+- Preferred: open a private report through GitHub Security Advisories
+  (the "Report a vulnerability" button under the repository's Security tab)
+- Alternatively, email security@evey.cc
 
-We will respond within 48 hours and keep you updated on the fix.
+Include details about the vulnerability and clear steps to reproduce. We aim to
+acknowledge reports promptly and keep you updated on the fix.
 
 ## Supported Versions
 
 Only the latest release is actively supported for security updates.
-
