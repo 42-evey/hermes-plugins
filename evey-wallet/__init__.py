@@ -192,9 +192,9 @@ def _check_doge():
         return None
 
     def api3():
-        data = _fetch(f"https://chain.so/api/v2/get_address_balance/DOGE/{addr}")
+        data = _fetch(f"https://sochain.com/api/v3/balance/DOGE/{addr}")
         if data and "data" in data:
-            return float(data["data"].get("confirmed_balance", 0))
+            return float(data["data"].get("confirmed", 0))
         return None
 
     return _try_apis([api1, api2, api3])
