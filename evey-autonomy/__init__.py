@@ -5,12 +5,15 @@ stock Hermes instance and can be customized without editing code.
 
 Config file (optional): ``$HERMES_HOME/evey-autonomy.json``
 
+heavy_model / cheap_model (or HERMES_AUTONOMY_HEAVY_MODEL / _CHEAP_MODEL) name the models
+the plans recommend for delegated steps; empty means the user's active model.
+
 Example:
 {
   "operator_name": "operator",
   "timezone": "UTC",
-  "heavy_model": "claude-sonnet-4-6",
-  "cheap_model": "claude-haiku-4-5",
+  "heavy_model": "",
+  "cheap_model": "",
   "projects": [
     {"name": "my-app", "path": "/path/to/my-app", "base_branch": "main", "importance": 8}
   ],
@@ -39,8 +42,8 @@ AUTONOMY_LOG = HERMES_HOME / "workspace" / "orchestrator" / "autonomy-log.jsonl"
 DEFAULTS = {
     "operator_name": os.environ.get("HERMES_OPERATOR_NAME", "operator"),
     "timezone": os.environ.get("HERMES_TIMEZONE", "UTC"),
-    "heavy_model": os.environ.get("HERMES_AUTONOMY_HEAVY_MODEL", "claude-sonnet-4-6"),
-    "cheap_model": os.environ.get("HERMES_AUTONOMY_CHEAP_MODEL", "claude-haiku-4-5"),
+    "heavy_model": os.environ.get("HERMES_AUTONOMY_HEAVY_MODEL", ""),
+    "cheap_model": os.environ.get("HERMES_AUTONOMY_CHEAP_MODEL", ""),
     "disabled_sources": [],
     "bridge_peer_names": ["claude-code", "pr-agent", "copilot"],
     "projects": [],
@@ -72,8 +75,8 @@ def _config():
     # Environment vars win even if a config file exists.
     cfg["operator_name"] = os.environ.get("HERMES_OPERATOR_NAME", cfg.get("operator_name", "operator"))
     cfg["timezone"] = os.environ.get("HERMES_TIMEZONE", cfg.get("timezone", "UTC"))
-    cfg["heavy_model"] = os.environ.get("HERMES_AUTONOMY_HEAVY_MODEL", cfg.get("heavy_model", "claude-sonnet-4-6"))
-    cfg["cheap_model"] = os.environ.get("HERMES_AUTONOMY_CHEAP_MODEL", cfg.get("cheap_model", "claude-haiku-4-5"))
+    cfg["heavy_model"] = os.environ.get("HERMES_AUTONOMY_HEAVY_MODEL", cfg.get("heavy_model", ""))
+    cfg["cheap_model"] = os.environ.get("HERMES_AUTONOMY_CHEAP_MODEL", cfg.get("cheap_model", ""))
     return cfg
 
 
