@@ -1,6 +1,6 @@
 ---
 name: review-feedback
-description: "On receiving code review or PR comments, before any change."
+description: "Address code review/PR comments: verify each, then fix."
 version: 1.0.0
 author: 42-evey
 license: MIT

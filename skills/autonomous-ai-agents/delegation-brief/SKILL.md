@@ -1,6 +1,6 @@
 ---
 name: delegation-brief
-description: "Writing a delegate_task brief and checking what comes back."
+description: "Before delegate_task: brief the subagent, then verify it."
 version: 1.0.0
 author: 42-evey
 license: MIT

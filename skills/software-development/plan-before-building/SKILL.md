@@ -1,6 +1,6 @@
 ---
 name: plan-before-building
-description: "Before multi-step builds: design, plan, one approval round."
+description: "Plan a feature: decide the design, write the plan, ask once."
 version: 1.0.0
 author: 42-evey
 license: MIT

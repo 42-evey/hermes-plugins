@@ -1,6 +1,6 @@
 ---
 name: work-ledger
-description: "Multi-session or long work that must survive compaction."
+description: "Multi-day or multi-session work: a ledger that survives."
 version: 1.0.0
 author: 42-evey
 license: MIT
