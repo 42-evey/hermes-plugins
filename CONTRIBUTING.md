@@ -1,29 +1,38 @@
 # Contributing
 
-Thanks for your interest in contributing! 🎉
+Pull requests are welcome. Keep each one to a single plugin or skill.
 
-## How to Contribute
+## Plugins
 
-1. **Fork** the repository
-2. **Create a feature branch**: `git checkout -b feature/my-feature`
-3. **Commit your changes**: `git commit -m 'Add my feature'`
-4. **Push to the branch**: `git push origin feature/my-feature`
-5. **Open a Pull Request**
+- One plugin per top-level folder: `plugin.yaml` plus `__init__.py` with `register(ctx)`.
+- Self-contained. Hermes installs a plugin by copying only its folder
+  (`hermes plugins install 42-evey/hermes-plugins/<plugin>`), so never import from a sibling
+  folder or the repo root.
+- Model calls go through `ctx.llm.complete(...)`, which uses the provider and model the user
+  has configured. Do not hard-code model ids, API keys or proxy URLs.
+- External services (MQTT, a vector store, a push server, an API) are read from environment
+  variables with no deployment-specific default. When one is unset, the tool returns a line
+  naming the variable to set instead of failing.
+- `provides_tools` in `plugin.yaml` lists exactly the tools `register()` adds.
+- Both checks pass, run from the repo root:
 
-## Guidelines
+  ```bash
+  hermes plugins doctor --ci ./<plugin>
+  hermes plugins validate ./<plugin>
+  ```
 
-- Keep PRs small and focused
-- Add tests for new functionality
-- Follow existing code style
-- Update documentation if needed
+## Skills
 
-## Reporting Issues
+- Layout: `skills/<category>/<name>/SKILL.md`, with `name` equal to the folder name.
+- `description` is at most 60 characters: the skill index in the system prompt cuts it there,
+  and it is what the model reads when choosing a skill.
+- Generic: no names of a particular deployment, person, host or service.
+- Every line is an instruction or a fact the agent acts on. Detail needed only sometimes goes
+  in `references/` and is linked from `SKILL.md`.
+- Check that Hermes lists it: point `skills.external_dirs` at your clone's `skills/` folder,
+  then run `hermes skills list`.
 
-- Use GitHub Issues to report bugs
-- Include steps to reproduce
-- Mention your OS and Python version
+## Reporting issues
 
-## Questions?
-
-Open an issue or reach out at [evey.cc](https://evey.cc).
-
+Open a GitHub issue with the Hermes version (`hermes --version`), the plugin or skill, what you
+ran, and the output.
