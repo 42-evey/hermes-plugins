@@ -1,5 +1,5 @@
 name: evey-delegate-model
-version: 1.0.3
+version: 1.0.4
 description: Out-of-band delegation with an optional per-task model, plus parallel fan-out
 provides_tools:
   - delegate_with_model

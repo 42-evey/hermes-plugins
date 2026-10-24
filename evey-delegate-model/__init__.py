@@ -21,6 +21,7 @@ Each call gets up to 3 retries with exponential backoff.
 """
 
 import concurrent.futures
+import contextvars
 import json
 import logging
 import os
@@ -272,7 +273,9 @@ def parallel_handler(args, **kwargs):
 
     results = []
     with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tasks), 3)) as pool:
-        futures = {pool.submit(_run_single_task, t): t for t in tasks}
+        # Each task runs in a copy of this call's context: the gateway keeps the profile's
+        # credentials in a contextvar, and a bare pool thread has none.
+        futures = {pool.submit(contextvars.copy_context().run, _run_single_task, t): t for t in tasks}
         for future in concurrent.futures.as_completed(futures):
             results.append(future.result())
 

@@ -10,6 +10,7 @@ model, so it needs no keys or model configuration.
 """
 
 import concurrent.futures
+import contextvars
 import json
 import logging
 import os
@@ -149,9 +150,13 @@ def handler(args, **kwargs):
         # Phase 1: Query all council members in parallel
         start_time = time.time()
         answers = []
+        # Each member runs in a copy of this call's context: the gateway keeps the
+        # profile's credentials in a contextvar, and a bare pool thread has none, so
+        # ctx.llm would fail closed there.
         with concurrent.futures.ThreadPoolExecutor(max_workers=3) as pool:
             futures = {
-                pool.submit(_query_council_member, role, system, question, context): role
+                pool.submit(contextvars.copy_context().run,
+                            _query_council_member, role, system, question, context): role
                 for role, system in COUNCIL_ROLES
             }
             for future in concurrent.futures.as_completed(futures):
