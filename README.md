@@ -14,8 +14,9 @@ A plugin installs one folder at a time and stays off until enabled:
 hermes plugins install 42-evey/hermes-plugins/evey-goals --enable
 ```
 
-A running gateway keeps the plugin code it loaded at start, so restart it before the next
-session: `hermes gateway restart`. `hermes plugins list` shows what is enabled.
+A running gateway keeps the plugin code it loaded at start. Run `hermes gateway stop` and the
+next session starts a fresh one (or `hermes gateway restart` when the gateway is installed as a
+service). `hermes plugins list` shows what is enabled.
 
 Skills install the same way, by path:
 
