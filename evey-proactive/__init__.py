@@ -4,8 +4,14 @@ Lets the agent send the user observations, tips, and interesting
 findings during work hours. Enforces an interruption budget (max 4/day)
 with cooldown between messages. Respects the user's time.
 
+Configuration (environment):
+  WORK_HOURS        "START-END" in whole hours, e.g. "9-21" (the default) or
+                    "22-6" for a window past midnight.
+  HERMES_TIMEZONE   IANA timezone the hours and the daily budget are counted
+                    in (the Hermes gateway sets it from config.yaml `timezone`). Default: UTC.
+
 Rules:
-- Only during work hours (9am-9pm)
+- Only during work hours (WORK_HOURS, default 9-21)
 - Max 4 proactive messages per day
 - 45-min cooldown between messages
 - If the user doesn't respond, double the cooldown
@@ -18,6 +24,7 @@ import os
 import time
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("evey.proactive")
 
@@ -33,8 +40,41 @@ DEFAULT_STATE = {
 }
 
 
+def _tz():
+    """The user's timezone: HERMES_TIMEZONE (an IANA name), else UTC."""
+    name = os.environ.get("HERMES_TIMEZONE", "").strip() or "UTC"
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        return timezone.utc
+
+
+def _now():
+    return datetime.now(_tz())
+
+
+def _work_hours():
+    """WORK_HOURS as "START-END" in whole hours (default 9-21)."""
+    raw = os.environ.get("WORK_HOURS", "").strip() or "9-21"
+    try:
+        start, end = (int(x) for x in raw.split("-", 1))
+        if 0 <= start <= 24 and 0 <= end <= 24:
+            return start, end
+    except ValueError:
+        pass
+    return 9, 21
+
+
+def _is_work_hours():
+    start, end = _work_hours()
+    hour = _now().hour
+    if start <= end:
+        return start <= hour < end
+    return hour >= start or hour < end  # window wraps past midnight
+
+
 def _load_state():
-    today = datetime.now().strftime("%Y-%m-%d")
+    today = _now().strftime("%Y-%m-%d")
     if STATE_FILE.exists():
         try:
             state = json.loads(STATE_FILE.read_text())
@@ -54,16 +94,11 @@ def _save_state(state):
     STATE_FILE.write_text(json.dumps(state, indent=2))
 
 
-def _is_work_hours():
-    hour = int(time.strftime("%H"))
-    return 9 <= hour < 21
-
-
 NUDGE_SCHEMA = {
     "name": "proactive_nudge",
     "description": (
         "Send the user a proactive message — an observation, tip, interesting finding, "
-        "or status update. Respects interruption budget (4/day) and work hours (9am-9pm). "
+        "or status update. Respects interruption budget (4/day) and work hours. "
         "Use this when you discover something the user should know about, not as a reply to the user. "
         "Categories: insight, tip, alert, observation, research_finding."
     ),
@@ -107,7 +142,7 @@ def handle_nudge(args, **kwargs):
         if not _is_work_hours():
             return json.dumps({
                 "status": "blocked",
-                "reason": "Outside work hours (9am-9pm). Save this for tomorrow morning.",
+                "reason": "Outside work hours (%d:00-%d:00). Save this for later." % _work_hours(),
             })
 
         if state["messages_sent"] >= 4:

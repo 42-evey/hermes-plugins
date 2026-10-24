@@ -9,6 +9,10 @@ Tracks:
 Call habits_log after every user interaction. Call habits_insights
 to get a summary of learned patterns. Self-improve cron uses
 this to update the agent's behavior.
+
+Configuration (environment):
+  HERMES_TIMEZONE   IANA timezone hours and weekdays are recorded in (the Hermes gateway
+                    sets it from config.yaml `timezone`). Default: UTC.
 """
 
 import json
@@ -16,8 +20,9 @@ import logging
 import os
 import time
 from collections import Counter
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 logger = logging.getLogger("evey.habits")
 
@@ -32,6 +37,15 @@ DEFAULT_DATA = {
     "first_seen": "",
     "last_seen": "",
 }
+
+
+def _tz():
+    """The user's timezone: HERMES_TIMEZONE (an IANA name), else UTC."""
+    name = os.environ.get("HERMES_TIMEZONE", "").strip() or "UTC"
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        return timezone.utc
 
 
 def _load():
@@ -91,7 +105,7 @@ INSIGHTS_SCHEMA = {
 
 def handle_log(args, **kwargs):
     data = _load()
-    now = datetime.now()
+    now = datetime.now(_tz())
     hour = str(now.hour)
 
     interaction = {

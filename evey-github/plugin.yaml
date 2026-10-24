@@ -1,6 +1,6 @@
 name: evey-github
 version: 1.0.1
-description: Monitor 42-evey GitHub repos (stars, issues, PRs) and upstream PR status
+description: Monitor a GitHub account's repos (stars, issues, PRs) and its upstream PR status; set GITHUB_OWNER
 author: evey
 provides_tools:
   - github_status

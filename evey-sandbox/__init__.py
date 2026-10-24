@@ -2,6 +2,11 @@
 
 Fast tool. No Docker, no code execution. Just read + clean + return.
 The operator controls which folders are accessible via config/sandbox.yaml.
+
+Configuration (environment):
+  SANDBOX_BASE_DIR  Base directory that relative folder paths resolve against,
+                    and the fallback location of config/sandbox.yaml.
+                    Default: $HERMES_HOME (HERMES_HOME defaults to ~/.hermes).
 """
 
 import json
@@ -9,8 +14,9 @@ import os
 import re
 from pathlib import Path
 
-BASE_DIR = Path("/mnt/v/evey")
-CONFIG_PATH = Path(os.path.expanduser("~/.hermes/config/sandbox.yaml"))
+HERMES_HOME = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes")))
+BASE_DIR = Path(os.environ.get("SANDBOX_BASE_DIR", "").strip() or HERMES_HOME)
+CONFIG_PATH = HERMES_HOME / "config" / "sandbox.yaml"
 if not CONFIG_PATH.exists():
     CONFIG_PATH = BASE_DIR / "config" / "sandbox.yaml"
 

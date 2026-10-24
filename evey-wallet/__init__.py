@@ -3,6 +3,14 @@
 Checks BTC, ETH, SOL, XRP, and DOGE wallet balances using free public APIs.
 Multiple fallback APIs per chain. No API keys needed.
 
+Configuration (environment):
+  BTC_ADDRESS, ETH_ADDRESS, SOL_ADDRESS, XRP_ADDRESS, DOGE_ADDRESS
+      The public address to watch on each chain. There are no defaults: a
+      chain with no address set is skipped and reported as "not configured".
+  HERMES_DATA
+      Directory for the balance cache (wallet-balances.json).
+      Default: $HERMES_HOME/data (HERMES_HOME defaults to ~/.hermes).
+
 Tools:
   wallet_check — Check all wallet balances
 """
@@ -12,18 +20,16 @@ import os
 import urllib.request
 import urllib.error
 
-# Wallet addresses (from donate page — these are public)
+# Public wallet addresses to watch, one per chain. No defaults.
 WALLETS = {
-    "BTC": os.environ.get("BTC_ADDRESS", "bc1qneyd4ccsuunkz554vfyudx08hrmgsnlk4nrpds"),
-    "ETH": os.environ.get("ETH_ADDRESS", "0xE8b40d85382d0f0b7Fe81B46078e6C2406B07748"),
-    "SOL": os.environ.get("SOL_ADDRESS", "C1FW5VN8CQ3zCS7vvgQ7zAjRQF4WYtDRTpZWtvhiYdtU"),
-    "XRP": os.environ.get("XRP_ADDRESS", "r3qixRk9o56T3PkDesjXoRrqunSxzdfuGA"),
-    "DOGE": os.environ.get("DOGE_ADDRESS", "DLzeCP5cZC2Dt5y64GmWbQLjAiYA3iDn9X"),
+    chain: os.environ.get(f"{chain}_ADDRESS", "").strip()
+    for chain in ("BTC", "ETH", "SOL", "XRP", "DOGE")
 }
 
 _last_balances = {}
 _CACHE_FILE = os.path.join(
-    os.environ.get("HERMES_DATA", os.path.expanduser("~/data")),
+    os.environ.get("HERMES_DATA")
+    or os.path.join(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes")), "data"),
     "wallet-balances.json"
 )
 
@@ -239,8 +245,12 @@ def handler(args, **kwargs):
 
     results = []
     deposits_detected = []
+    not_configured = []
 
     for chain, check_fn in checkers.items():
+        if not WALLETS[chain]:
+            not_configured.append(chain)
+            continue
         balance = check_fn()
         if balance is None:
             results.append(f"{chain}: Unable to check (all APIs failed)")
@@ -262,6 +272,9 @@ def handler(args, **kwargs):
         _last_balances[chain] = balance
 
     _save_cache()
+
+    for chain in not_configured:
+        results.append(f"{chain}: not configured: set {chain}_ADDRESS")
 
     output = "Wallet Balances:\n" + "\n".join(results)
     if deposits_detected:

@@ -1,8 +1,14 @@
-"""GitHub Plugin — monitor 42-evey repos, stars, issues, and PRs.
+"""GitHub Plugin — monitor a GitHub account's repos, stars, issues, and PRs.
+
+Configuration (environment):
+  GITHUB_OWNER          The user or organisation whose public repos to watch.
+                        No default: without it both tools say "not configured".
+  GITHUB_UPSTREAM_REPO  The upstream repo whose PRs from GITHUB_OWNER to track.
+                        Default: NousResearch/hermes-agent.
 
 Tools:
-  github_status — Check all 42-evey repos: stars, forks, open issues, recent activity
-  github_pr_status — Check status of our PRs on upstream repos
+  github_status — Check all of GITHUB_OWNER's repos: stars, forks, open issues, recent activity
+  github_pr_status — Check status of GITHUB_OWNER's PRs on the upstream repo
 """
 
 import json
@@ -10,8 +16,9 @@ import os
 import urllib.request
 import urllib.error
 
-ORG = "42-evey"
-UPSTREAM_REPO = "NousResearch/hermes-agent"
+ORG = os.environ.get("GITHUB_OWNER", "").strip()
+UPSTREAM_REPO = os.environ.get("GITHUB_UPSTREAM_REPO", "").strip() or "NousResearch/hermes-agent"
+NOT_CONFIGURED = "GitHub owner not configured: set GITHUB_OWNER to the user or organisation to watch."
 
 # Read-only GitHub API — no auth needed for public repos.
 # Write operations (PRs, issues) are out of scope; hand them to Claude Code via evey-bridge.
@@ -30,7 +37,7 @@ def _fetch(url, timeout=10):
 STATUS_SCHEMA = {
     "name": "github_status",
     "description": (
-        "Check all 42-evey GitHub repos: stars, forks, open issues, last push, "
+        "Check all GitHub repos of the configured owner (GITHUB_OWNER): stars, forks, open issues, last push, "
         "and recent activity. Shows repo health at a glance."
     ),
     "parameters": {
@@ -47,7 +54,8 @@ STATUS_SCHEMA = {
 PR_SCHEMA = {
     "name": "github_pr_status",
     "description": (
-        "Check status of 42-evey's pull requests on NousResearch/hermes-agent. "
+        "Check status of the configured owner's pull requests on the upstream repo "
+        "(GITHUB_UPSTREAM_REPO, default NousResearch/hermes-agent). "
         "Shows open/closed/merged status, comments, and review status."
     ),
     "parameters": {
@@ -58,6 +66,8 @@ PR_SCHEMA = {
 
 
 def status_handler(args, **kwargs):
+    if not ORG:
+        return NOT_CONFIGURED
     repo_filter = None
     if isinstance(args, dict):
         repo_filter = args.get("repo", "").strip()
@@ -98,6 +108,8 @@ def status_handler(args, **kwargs):
 
 
 def pr_handler(args, **kwargs):
+    if not ORG:
+        return NOT_CONFIGURED
     data = _fetch(
         f"https://api.github.com/repos/{UPSTREAM_REPO}/pulls?state=all&per_page=10"
         f"&head={ORG}"
@@ -107,7 +119,7 @@ def pr_handler(args, **kwargs):
         return f"Error: {data['error']}"
 
     if not data:
-        return "No PRs found from 42-evey"
+        return f"No PRs found from {ORG}"
 
     lines = [f"PRs from {ORG} on {UPSTREAM_REPO}:\n"]
 

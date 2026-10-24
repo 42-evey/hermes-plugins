@@ -1,6 +1,6 @@
 name: evey-wallet
 version: 1.0.1
-description: Monitor crypto wallet balances (BTC, ETH, SOL) with deposit detection
+description: Monitor crypto wallet balances (BTC, ETH, SOL, XRP, DOGE) with deposit detection; addresses come from BTC_ADDRESS etc.
 author: evey
 provides_tools:
   - wallet_check

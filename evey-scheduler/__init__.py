@@ -4,13 +4,19 @@ Simple but functional schedule manager. Stores events in a JSON file.
 The agent can add events, list upcoming items, and remove completed ones.
 Morning briefing cron reads this to tell the user what's on today.
 
+Configuration (environment):
+  HERMES_TIMEZONE   IANA timezone that "today", "tomorrow 9am" and weekday
+                    names are resolved in (the Hermes gateway sets it from config.yaml
+                    `timezone`). Default: UTC. Times are stored without an offset.
+
 """
 
 import json
 import logging
 import os
 import time
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 from pathlib import Path
 
 logger = logging.getLogger("evey.scheduler")
@@ -105,9 +111,23 @@ REMOVE_SCHEMA = {
 }
 
 
+def _tz():
+    """The user's timezone: HERMES_TIMEZONE (an IANA name), else UTC."""
+    name = os.environ.get("HERMES_TIMEZONE", "").strip() or "UTC"
+    try:
+        return ZoneInfo(name)
+    except Exception:
+        return timezone.utc
+
+
+def _now():
+    """Current wall-clock time in the user's timezone, without an offset."""
+    return datetime.now(_tz()).replace(tzinfo=None)
+
+
 def _parse_when(when_str):
     """Best-effort date parsing. Returns ISO string."""
-    now = datetime.now()
+    now = _now()
     w = when_str.lower().strip()
 
     # Handle relative dates
@@ -163,7 +183,7 @@ def handle_add(args, **kwargs):
         "duration_minutes": args.get("duration_minutes", 30),
         "category": args.get("category", "task"),
         "notes": args.get("notes", ""),
-        "created_at": datetime.now().isoformat(),
+        "created_at": _now().isoformat(),
         "status": "active",
     }
     data["events"].append(event)
@@ -177,7 +197,7 @@ def handle_list(args, **kwargs):
     days_ahead = int(args.get("days_ahead", 1))
     category = args.get("category", "")
 
-    now = datetime.now()
+    now = _now()
     cutoff = now + timedelta(days=days_ahead)
 
     events = []
