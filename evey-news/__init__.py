@@ -15,7 +15,7 @@ from datetime import datetime
 
 logger = logging.getLogger("evey.news")
 
-SEARXNG_URL = os.environ.get("SEARXNG_URL", "http://hermes-searxng:8080")
+SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
 
 NEWS_QUERIES = [
     "AI agent framework release 2026",
@@ -80,6 +80,8 @@ import urllib.parse
 
 
 def handler(args, **kwargs):
+    if not SEARXNG_URL:
+        return json.dumps({"status": "error", "error": "not configured: set SEARXNG_URL"})
     custom = args.get("custom_query", "")
     max_results = int(args.get("max_results", 3))
 

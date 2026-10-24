@@ -13,7 +13,7 @@ import urllib.error
 import urllib.parse
 
 SEARXNG_URL = os.environ.get("SEARXNG_URL", "")
-CRAWL4AI_URL = "http://hermes-crawl4ai:11235"
+CRAWL4AI_URL = os.environ.get("CRAWL4AI_URL", "")  # optional; without it extract fetches directly
 
 
 WEB_SEARCH_SCHEMA = {
@@ -145,6 +145,8 @@ def extract_handler(args, **kwargs):
 
         # Try Crawl4AI first
         try:
+            if not CRAWL4AI_URL:
+                raise RuntimeError("CRAWL4AI_URL not set")
             payload = json.dumps({
                 "urls": [url],
                 "word_count_threshold": 10,

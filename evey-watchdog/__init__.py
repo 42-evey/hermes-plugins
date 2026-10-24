@@ -19,7 +19,7 @@ from pathlib import Path
 logger = logging.getLogger("evey.watchdog")
 
 STATE_FILE = Path(os.path.expanduser("~/.hermes/workspace/watchdog-state.json"))
-NTFY_URL = os.environ.get("NTFY_URL", "http://hermes-ntfy:80")
+NTFY_URL = os.environ.get("NTFY_URL", "")  # optional; alerts are skipped without it
 SILENT_THRESHOLD_MINUTES = 120  # 2 hours
 WORK_HOURS = (9, 21)  # 9am to 9pm
 
@@ -51,6 +51,9 @@ def _is_work_hours():
 
 def _send_ntfy_alert(message):
     """Send alert to ntfy evey-alerts topic."""
+    if not NTFY_URL:
+        logger.info("Watchdog alert skipped: NTFY_URL not set")
+        return False
     try:
         data = message.encode()
         req = urllib.request.Request(

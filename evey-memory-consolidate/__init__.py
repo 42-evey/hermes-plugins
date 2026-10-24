@@ -16,8 +16,8 @@ from base64 import b64encode
 from pathlib import Path
 
 LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "")
-QDRANT_URL = "http://hermes-qdrant:6333"
-OLLAMA_URL = "http://hermes-ollama:11434"
+QDRANT_URL = os.environ.get("QDRANT_URL", "")  # optional with OLLAMA_URL: vector upsert
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "")
 MEMORY_PATH = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))) / "memories" / "MEMORY.md"
 EMBED_MODEL = "snowflake-arctic-embed2"
 
@@ -160,6 +160,8 @@ def _update_memory(new_facts):
 
 
 def _embed_to_qdrant(facts):
+    if not QDRANT_URL or not OLLAMA_URL:
+        return
     import hashlib
     for i, fact in enumerate(facts.split("\n")):
         if not fact.strip() or not fact.startswith("-"):

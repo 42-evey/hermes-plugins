@@ -17,7 +17,7 @@ except ImportError:
 
 logger = logging.getLogger("evey.mqtt")
 
-MQTT_HOST = os.environ.get("MQTT_HOST", "hermes-mqtt")
+MQTT_HOST = os.environ.get("MQTT_HOST", "")
 MQTT_PORT = int(os.environ.get("MQTT_PORT", "1883"))
 
 SUBSCRIPTIONS = [
@@ -83,7 +83,7 @@ def _connect():
     if state['client'] is not None:
         return state['client']
 
-    if paho_mqtt is None:
+    if paho_mqtt is None or not MQTT_HOST:
         return None
 
     try:
@@ -155,6 +155,8 @@ def handle_subscribe(args, **kwargs):
 
 
 def handle_publish(args, **kwargs):
+    if not MQTT_HOST:
+        return json.dumps({"error": "not configured: set MQTT_HOST"})
     client = _connect()
     if not client:
         return json.dumps({"error": "MQTT not available"})

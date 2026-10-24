@@ -13,7 +13,7 @@ import os
 import urllib.request
 import urllib.error
 
-DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "http://hermes-dashboard:8088")
+DASHBOARD_URL = os.environ.get("DASHBOARD_URL", "")
 
 SCHEMA = {
     "name": "status_check",
@@ -36,6 +36,8 @@ SCHEMA = {
 
 
 def handler(args, **kwargs):
+    if not DASHBOARD_URL:
+        return json.dumps({"error": "not configured: set DASHBOARD_URL"})
     try:
         url = f"{DASHBOARD_URL}/api/evey/status"
         req = urllib.request.Request(url, headers={"Accept": "application/json"})

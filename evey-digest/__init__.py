@@ -12,7 +12,7 @@ HERMES_HOME = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes")
 LANGFUSE_URL = os.environ.get("LANGFUSE_HOST", "")
 LANGFUSE_PK = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
 LANGFUSE_SK = os.environ.get("LANGFUSE_SECRET_KEY", "")
-NTFY_URL = os.environ.get("NTFY_URL", "http://hermes-ntfy:80")
+NTFY_URL = os.environ.get("NTFY_URL", "")
 HTTP_TIMEOUT = 10
 
 SCHEMA = {
