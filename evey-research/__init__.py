@@ -44,7 +44,7 @@ WEB_SEARCH_SCHEMA = {
 }
 
 EXTRACT_SCHEMA = {
-    "name": "web_extract",
+    "name": "research_extract",
     "description": (
         "Extract clean text content from a URL using Crawl4AI. "
         "Use for: reading articles, documentation, papers, blog posts. "
@@ -235,5 +235,5 @@ def save_handler(args, **kwargs):
 
 def register(ctx):
     ctx.register_tool(name="web_research", toolset="evey_research", schema=WEB_SEARCH_SCHEMA, handler=search_handler)
-    ctx.register_tool(name="web_extract", toolset="evey_research", schema=EXTRACT_SCHEMA, handler=extract_handler)
+    ctx.register_tool(name="research_extract", toolset="evey_research", schema=EXTRACT_SCHEMA, handler=extract_handler)
     ctx.register_tool(name="save_finding", toolset="evey_research", schema=SAVE_FINDING_SCHEMA, handler=save_handler)
