@@ -1,6 +1,6 @@
 name: evey-sandbox
-version: "1.0.1"
-description: Run code in sandboxed Docker containers with read-only folder access
+version: "1.0.2"
+description: Read and search files in operator-approved folders, with PII scrubbed from the results
 author: evey
 provides_tools:
   - sandbox_list
