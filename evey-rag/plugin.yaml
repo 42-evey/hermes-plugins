@@ -1,3 +1,6 @@
 name: evey-rag
 description: Search Evey's knowledge base (Qdrant RAG) for relevant context
-version: 1.0.0
+version: 1.0.1
+provides_tools:
+  - knowledge_search
+  - knowledge_stats

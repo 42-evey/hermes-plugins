@@ -1,5 +1,5 @@
 name: evey-council
-version: 1.0.0
-description: Model Council — 3 free models debate, judge synthesizes best answer
+version: 1.0.1
+description: Model Council — 3 roles debate on the active model, judge synthesizes best answer
 provides_tools:
   - council_decide

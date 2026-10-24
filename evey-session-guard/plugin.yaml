@@ -2,3 +2,6 @@ name: evey-session-guard
 version: "1.0"
 description: Session state checkpoint — save critical context before compression or long tasks
 author: evey
+provides_tools:
+  - session_checkpoint
+  - session_restore
