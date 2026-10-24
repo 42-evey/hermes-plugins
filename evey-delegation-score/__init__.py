@@ -29,7 +29,7 @@ LOG_SCHEMA = {
         "properties": {
             "model": {
                 "type": "string",
-                "description": "Which model was used (e.g. 'mimo-v2-pro', 'nemotron-free')",
+                "description": "Which model was used: the model id as your provider reports it",
             },
             "task_type": {
                 "type": "string",
