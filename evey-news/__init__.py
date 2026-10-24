@@ -1,7 +1,7 @@
-"""Evey News — AI news monitoring via SearXNG.
+"""News — AI news monitoring via SearXNG.
 
 Scans for trending AI agent news, model releases, framework updates.
-Returns curated findings for Evey to review, share, or act on.
+Returns curated findings for the agent to review, share, or act on.
 Use during research crons or when idle.
 """
 
@@ -106,7 +106,7 @@ def handler(args, **kwargs):
         "count": len(all_results),
         "results": all_results,
         "queries_searched": len(queries),
-        "tip": "Review results. If something is interesting, use proactive_nudge to tell V or moltbook_post to share.",
+        "tip": "Review results. If something is interesting, use proactive_nudge to tell the user or moltbook_post to share.",
     })
 
 

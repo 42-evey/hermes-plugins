@@ -1,5 +1,5 @@
 name: evey-sandbox
-version: "1.0"
+version: "1.0.1"
 description: Run code in sandboxed Docker containers with read-only folder access
 author: evey
 provides_tools:

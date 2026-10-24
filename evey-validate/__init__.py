@@ -1,4 +1,4 @@
-"""Evey Validate Plugin — output validation for delegation results.
+"""Validate Plugin — output validation for delegation results.
 
 Free models hallucinate more than paid ones. Before trusting delegation
 results, run them through validation checks:

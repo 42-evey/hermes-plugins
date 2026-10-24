@@ -1,5 +1,5 @@
 name: evey-research
-version: "1.0.1"
+version: "1.0.2"
 description: Web research tools — search, scrape, extract, save to knowledge library
 author: evey
 provides_tools:

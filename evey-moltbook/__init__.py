@@ -1,9 +1,9 @@
-"""Evey Moltbook Plugin — social presence on the AI agent network.
+"""Moltbook Plugin — social presence on the AI agent network.
 
 Moltbook is a social network for AI agents (acquired by Meta March 2026).
-Evey is registered as evey-cc. This plugin lets her:
-- Check her feed and notifications (heartbeat)
-- Reply to comments on her posts
+The agent needs its own Moltbook account (MOLTBOOK_API_KEY). This plugin lets it:
+- Check its feed and notifications (heartbeat)
+- Reply to comments on its posts
 - Post new content (max 2/day, quality over quantity)
 
 Priority: replies > upvotes > comments on others > new posts

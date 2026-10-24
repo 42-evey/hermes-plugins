@@ -1,7 +1,7 @@
-"""Evey Secure Reader — read files from V-approved folders with PII scrubbing.
+"""Secure Reader — read files from operator-approved folders with PII scrubbing.
 
 Fast tool. No Docker, no code execution. Just read + clean + return.
-V controls which folders are accessible via config/sandbox.yaml.
+The operator controls which folders are accessible via config/sandbox.yaml.
 """
 
 import json
@@ -106,7 +106,7 @@ def _scrub_pii(text):
 READ_SCHEMA = {
     "name": "secure_read",
     "description": (
-        "Read a file from V's approved folders. Content is PII-scrubbed automatically.\n"
+        "Read a file from the operator's approved folders. Content is PII-scrubbed automatically.\n"
         "READ-ONLY. Cannot modify, delete, or execute anything.\n"
         "Use sandbox_list to see available folders."
     ),
@@ -129,7 +129,7 @@ READ_SCHEMA = {
 SEARCH_SCHEMA = {
     "name": "secure_search",
     "description": (
-        "Search for files or content inside V's approved folders.\n"
+        "Search for files or content inside the operator's approved folders.\n"
         "PII-scrubbed results. Cannot access folders outside the whitelist."
     ),
     "parameters": {
@@ -182,7 +182,7 @@ def read_handler(args, **kwargs):
 
         if not _is_allowed(path_str):
             return json.dumps({
-                "error": "ACCESS DENIED — this folder is not in V's whitelist",
+                "error": "ACCESS DENIED — this folder is not in the operator's allowlist",
                 "allowed": _resolve_allowed(),
             })
 
@@ -226,7 +226,7 @@ def search_handler(args, **kwargs):
 
         if not _is_allowed(folder):
             return json.dumps({
-                "error": "ACCESS DENIED — this folder is not in V's whitelist",
+                "error": "ACCESS DENIED — this folder is not in the operator's allowlist",
                 "allowed": _resolve_allowed(),
             })
 
@@ -297,7 +297,7 @@ def list_handler(args, **kwargs):
             "allowed_folders": allowed,
             "access": "read-only",
             "pii_scrubbing": "enabled",
-            "note": "V controls this list in config/sandbox.yaml",
+            "note": "The operator controls this list in config/sandbox.yaml",
         })
     except Exception as e:
         return json.dumps({"error": str(e)})

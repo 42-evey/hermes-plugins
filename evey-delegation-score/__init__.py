@@ -1,4 +1,4 @@
-"""Evey Delegation Score Plugin — track delegation quality per model.
+"""Delegation Score Plugin — track delegation quality per model.
 
 Two tools:
 - delegation_log: Record a quality score after validate_output runs.

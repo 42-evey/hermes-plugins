@@ -1,10 +1,10 @@
-"""Evey Status Plugin — ONE tool call replaces 5-8 separate checks.
+"""Status Plugin — ONE tool call replaces 5-8 separate checks.
 
 Calls the dashboard's /api/evey/status endpoint which aggregates:
 bridge messages, pending tasks, MQTT events, costs, cron errors,
 goals, and time context — all in a single local HTTP call.
 
-This is FREE (local network), fast (<100ms), and should be Evey's
+This is FREE (local network), fast (<100ms), and should be the agent's
 FIRST call every session instead of 5+ separate tool calls.
 """
 
@@ -55,11 +55,11 @@ def handler(args, **kwargs):
 
         bridge = data.get("bridge", {})
         if bridge.get("unread_messages", 0) > 0:
-            parts.append(f"BRIDGE: {bridge['unread_messages']} unread message(s) from Mother")
+            parts.append(f"BRIDGE: {bridge['unread_messages']} unread message(s) from Claude Code")
             for m in bridge.get("messages", [])[:3]:
                 parts.append(f"  [{m.get('ts', '')[:16]}] {m.get('preview', '')}")
         if bridge.get("pending_tasks", 0) > 0:
-            parts.append(f"TASKS: {bridge['pending_tasks']} pending from Mother")
+            parts.append(f"TASKS: {bridge['pending_tasks']} pending from Claude Code")
             for t in bridge.get("tasks", [])[:3]:
                 parts.append(f"  [{t.get('priority', 'normal')}] {t.get('desc', '')}")
 

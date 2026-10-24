@@ -1,5 +1,5 @@
 name: evey-github
-version: 1.0.0
+version: 1.0.1
 description: Monitor 42-evey GitHub repos (stars, issues, PRs) and upstream PR status
 author: evey
 provides_tools:

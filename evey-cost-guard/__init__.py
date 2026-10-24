@@ -1,4 +1,4 @@
-"""Evey Cost Guard Plugin — budget enforcement + analytics via Langfuse.
+"""Cost Guard Plugin — budget enforcement + analytics via Langfuse.
 
 Tracks API costs in real-time and enforces spending limits.
 Queries Langfuse for actual cost data so numbers are real, not estimated.

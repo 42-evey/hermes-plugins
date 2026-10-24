@@ -1,4 +1,4 @@
-"""Evey GitHub Plugin — monitor 42-evey repos, stars, issues, and PRs.
+"""GitHub Plugin — monitor 42-evey repos, stars, issues, and PRs.
 
 Tools:
   github_status — Check all 42-evey repos: stars, forks, open issues, recent activity
@@ -14,7 +14,7 @@ ORG = "42-evey"
 UPSTREAM_REPO = "NousResearch/hermes-agent"
 
 # Read-only GitHub API — no auth needed for public repos.
-# For write operations (PRs, issues), Evey delegates to Mother via bridge.
+# Write operations (PRs, issues) are out of scope; hand them to Claude Code via evey-bridge.
 HEADERS = {"User-Agent": "evey-github/1.0", "Accept": "application/vnd.github+json"}
 
 

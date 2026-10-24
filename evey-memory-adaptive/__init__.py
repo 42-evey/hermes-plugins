@@ -1,4 +1,4 @@
-"""Adaptive memory — importance scoring and decay for Evey's memories.
+"""Adaptive memory — importance scoring and decay for the agent's memories.
 
 Tracks memory importance using exponential decay. Memories that aren't
 accessed lose importance over time. Memories that are frequently accessed

@@ -1,4 +1,4 @@
-"""Evey Memory Consolidation — extracts facts from daily conversations.
+"""Memory Consolidation — extracts facts from daily conversations.
 
 Runs daily at 3am. Queries Langfuse for yesterday's traces, uses the
 user's active model (Hermes ctx.llm) to extract key facts, updates

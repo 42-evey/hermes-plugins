@@ -1,4 +1,4 @@
-"""Evey MQTT — singleton client that survives plugin reimports.
+"""MQTT — singleton client that survives plugin reimports.
 
 Uses sys module attribute to persist the MQTT client across hermes
 session reloads. Each session reimports plugins fresh, but sys persists.

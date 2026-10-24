@@ -1,8 +1,8 @@
-"""Evey Council Plugin — Model Council for high-stakes decisions.
+"""Council Plugin — Model Council for high-stakes decisions.
 
 Sends a question to 3 council members in parallel, each with its own role
 (pragmatist, skeptic, contrarian), collects answers, then has a judge
-synthesize the best answer from all three. Gives Evey a "think harder"
+synthesize the best answer from all three. Gives the agent a "think harder"
 capability.
 
 Every call goes through Hermes (ctx.llm) on the user's active provider and

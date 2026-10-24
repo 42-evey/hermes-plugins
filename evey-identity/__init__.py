@@ -1,7 +1,7 @@
-"""Evey Identity Plugin — self-updating personality.
+"""Identity Plugin — self-updating personality.
 
-Inspired by OpenClaw's diary pattern. Evey can update her own identity
-based on what she learns. Adds a "Learned Behaviors" section to SOUL.md
+Inspired by OpenClaw's diary pattern. The agent can update its own identity
+based on what it learns. Adds a "Learned Behaviors" section to SOUL.md
 that grows organically from experience.
 
 Runs during self-improve cron (3am) or on-demand.

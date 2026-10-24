@@ -1,4 +1,4 @@
-"""Evey Session Guard — checkpoint session state to prevent memory loss.
+"""Session Guard — checkpoint session state to prevent memory loss.
 
 Saves current task context, decisions, and progress before compression
 or long-running operations. Hooks into pre_tool_call to auto-checkpoint

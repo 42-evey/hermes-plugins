@@ -1,14 +1,14 @@
-"""Evey Proactive Plugin — Surface insights without being asked.
+"""Proactive Plugin — Surface insights without being asked.
 
-Gives Evey the ability to send V observations, tips, and interesting
+Lets the agent send the user observations, tips, and interesting
 findings during work hours. Enforces an interruption budget (max 4/day)
-with cooldown between messages. Respects V's time.
+with cooldown between messages. Respects the user's time.
 
 Rules:
 - Only during work hours (9am-9pm)
 - Max 4 proactive messages per day
 - 45-min cooldown between messages
-- If V doesn't respond, double the cooldown
+- If the user doesn't respond, double the cooldown
 - Urgent bypasses budget (service down, security alert)
 """
 
@@ -62,9 +62,9 @@ def _is_work_hours():
 NUDGE_SCHEMA = {
     "name": "proactive_nudge",
     "description": (
-        "Send V a proactive message — an observation, tip, interesting finding, "
+        "Send the user a proactive message — an observation, tip, interesting finding, "
         "or status update. Respects interruption budget (4/day) and work hours (9am-9pm). "
-        "Use this when you discover something V should know about, not as a response to V. "
+        "Use this when you discover something the user should know about, not as a reply to the user. "
         "Categories: insight, tip, alert, observation, research_finding."
     ),
     "parameters": {
@@ -77,7 +77,7 @@ NUDGE_SCHEMA = {
             },
             "message": {
                 "type": "string",
-                "description": "The message to send V (keep under 100 words)",
+                "description": "The message to send the user (keep under 100 words)",
             },
             "urgent": {
                 "type": "boolean",
@@ -148,7 +148,7 @@ def handle_nudge(args, **kwargs):
         "category": category,
         "budget_remaining": max(0, 4 - state["messages_sent"]),
         "next_available_in": f"{state['cooldown_minutes']} minutes",
-        "instruction": "Now send this message to V via Telegram. Frame it as an offer, not a command.",
+        "instruction": "Now send this message to the user on their messaging channel. Frame it as an offer, not a command.",
     })
 
 

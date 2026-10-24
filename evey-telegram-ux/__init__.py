@@ -1,4 +1,4 @@
-"""Evey Telegram UX Plugin — rich formatted messages for Telegram.
+"""Telegram UX Plugin — rich formatted messages for Telegram.
 
 Provides tools for sending nicely formatted status updates, delegation
 result cards, and dashboard summaries via Telegram's HTML formatting.
@@ -14,7 +14,7 @@ import time
 STATUS_CARD_SCHEMA = {
     "name": "telegram_card",
     "description": (
-        "Send a beautifully formatted status card to V via Telegram. "
+        "Send a formatted status card to the user via Telegram. "
         "Use for: delegation results, research summaries, health reports, goal updates. "
         "Formats with HTML (bold, italic, code blocks) automatically."
     ),
@@ -50,7 +50,7 @@ STATUS_CARD_SCHEMA = {
 QUICK_STATUS_SCHEMA = {
     "name": "telegram_status",
     "description": (
-        "Send a quick one-line status update to V. "
+        "Send a quick one-line status update to the user. "
         "Use for: progress notifications, brief updates, task completions."
     ),
     "parameters": {

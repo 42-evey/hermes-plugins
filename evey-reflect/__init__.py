@@ -1,4 +1,4 @@
-"""Evey Reflect Plugin — Reflexion pattern for self-correction.
+"""Reflect Plugin — Reflexion pattern for self-correction.
 
 Before sending important outputs, run them through a critique loop:
 Generate -> Critique -> Correct (max 3 iterations).

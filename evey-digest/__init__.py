@@ -1,4 +1,4 @@
-"""Evey Digest Plugin — aggregates overnight activity for V's morning briefing."""
+"""Digest Plugin — aggregates overnight activity for the user's morning briefing."""
 
 import base64
 import json
@@ -18,7 +18,7 @@ HTTP_TIMEOUT = 10
 SCHEMA = {
     "name": "daily_digest",
     "description": (
-        "Generate a morning digest for V. Aggregates overnight costs from Langfuse, "
+        "Generate a morning digest for the user. Aggregates overnight costs from Langfuse, "
         "cron job health, bridge task status, goal counts, and ntfy alerts from the last 24h. "
         "No parameters needed — just call it."
     ),

@@ -1,10 +1,10 @@
-"""Evey Telemetry Plugin — Structured logging and observability.
+"""Telemetry Plugin — Structured logging and observability.
 
 Emits structured JSON events for every tool call, delegation, error,
 and key agent action. Events go to a rotating log file at
 ~/.hermes/telemetry/events.jsonl for dashboard consumption.
 
-Provides a telemetry_query tool for Evey to inspect her own metrics.
+Provides a telemetry_query tool for the agent to inspect its own metrics.
 """
 
 import json
@@ -124,7 +124,7 @@ def track_cron(job_name, status, duration_ms=0, output_preview=None):
 QUERY_SCHEMA = {
     "name": "telemetry_query",
     "description": (
-        "Query Evey's telemetry data. View recent events, session metrics, "
+        "Query the agent's telemetry data. View recent events, session metrics, "
         "error rates, delegation performance, and tool usage patterns. "
         "Use this to understand your own performance and identify issues."
     ),

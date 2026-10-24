@@ -1,5 +1,5 @@
 name: evey-bridge
-version: 1.0.0
+version: 1.0.1
 description: Bidirectional bridge to Claude Code (Opus). Send coding tasks and messages.
 provides_tools:
   - claude_bridge_task

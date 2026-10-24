@@ -1,10 +1,10 @@
-"""Evey Watchdog — self-monitoring and alerting.
+"""Watchdog — self-monitoring and alerting.
 
-Tracks Evey's last activity. If she goes silent for 2+ hours during work
+Tracks the agent's last activity. If it goes silent for 2+ hours during work
 hours (9am-9pm), sends an alert to ntfy. The heartbeat cron should call
-watchdog_heartbeat regularly to prove she's alive.
+watchdog_heartbeat regularly to prove it's alive.
 
-Also provides watchdog_status for Evey to check her own uptime/activity.
+Also provides watchdog_status for the agent to check its own uptime/activity.
 """
 
 import json
@@ -59,7 +59,7 @@ def _send_ntfy_alert(message):
         req = urllib.request.Request(
             f"{NTFY_URL}/evey-alerts",
             data=data,
-            headers={"Title": "Evey Watchdog Alert", "Priority": "high", "Tags": "warning"},
+            headers={"Title": "Hermes Watchdog Alert", "Priority": "high", "Tags": "warning"},
         )
         urllib.request.urlopen(req, timeout=5)
         logger.info(f"Watchdog alert sent: {message[:60]}")
@@ -72,9 +72,9 @@ def _send_ntfy_alert(message):
 HEARTBEAT_SCHEMA = {
     "name": "watchdog_heartbeat",
     "description": (
-        "Record a heartbeat — proves Evey is alive and active. "
+        "Record a heartbeat — proves the agent is alive and active. "
         "Call this during cron jobs or after completing tasks. "
-        "If no heartbeat for 2+ hours during work hours, V gets an alert."
+        "If no heartbeat for 2+ hours during work hours, the operator gets an alert."
     ),
     "parameters": {"type": "object", "properties": {
         "activity": {
@@ -155,7 +155,7 @@ def handle_status(args, **kwargs):
 def register(ctx):
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
 
-    # Check if Evey has been silent on startup
+    # Check if the agent has been silent on startup
     state = _load_state()
     if state["last_heartbeat"] > 0 and _is_work_hours():
         silent_minutes = (time.time() - state["last_heartbeat"]) / 60
@@ -164,7 +164,7 @@ def register(ctx):
             if state.get("alert_date") != today:
                 state["alerts_sent_today"] = 0
                 state["alert_date"] = today
-            _send_ntfy_alert(f"Evey has been silent for {int(silent_minutes)} minutes during work hours. Last activity: {state.get('last_activity', 'unknown')}")
+            _send_ntfy_alert(f"The agent has been silent for {int(silent_minutes)} minutes during work hours. Last activity: {state.get('last_activity', 'unknown')}")
             state["alerts_sent_today"] = state.get("alerts_sent_today", 0) + 1
             _save_state(state)
 

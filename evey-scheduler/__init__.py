@@ -1,10 +1,9 @@
-"""Evey Scheduler — manage V's schedule.
+"""Scheduler — manage the user's schedule.
 
 Simple but functional schedule manager. Stores events in a JSON file.
-Evey can add events, list upcoming items, and remove completed ones.
-Morning briefing cron reads this to tell V what's on today.
+The agent can add events, list upcoming items, and remove completed ones.
+Morning briefing cron reads this to tell the user what's on today.
 
-Future: integrate with Google Calendar, Samsung watch, n8n webhooks.
 """
 
 import json
@@ -36,9 +35,9 @@ def _save(data):
 ADD_SCHEMA = {
     "name": "schedule_add",
     "description": (
-        "Add an event or reminder to V's schedule. "
+        "Add an event or reminder to the user's schedule. "
         "Examples: meeting at 2pm, deadline Friday, reminder to check deploy tomorrow. "
-        "Evey manages V's calendar."
+        "You manage the user's calendar."
     ),
     "parameters": {
         "type": "object",
@@ -72,7 +71,7 @@ ADD_SCHEMA = {
 LIST_SCHEMA = {
     "name": "schedule_list",
     "description": (
-        "List V's upcoming schedule. Shows today's events by default, "
+        "List the user's upcoming schedule. Shows today's events by default, "
         "or specify a date range. Use in morning briefings."
     ),
     "parameters": {
@@ -224,4 +223,4 @@ def register(ctx):
     ctx.register_tool(name="schedule_add", toolset="evey_scheduler", schema=ADD_SCHEMA, handler=handle_add)
     ctx.register_tool(name="schedule_list", toolset="evey_scheduler", schema=LIST_SCHEMA, handler=handle_list)
     ctx.register_tool(name="schedule_remove", toolset="evey_scheduler", schema=REMOVE_SCHEMA, handler=handle_remove)
-    logger.info("evey-scheduler loaded — V's schedule manager active")
+    logger.info("evey-scheduler loaded — schedule manager active")

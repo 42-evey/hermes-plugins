@@ -1,6 +1,6 @@
 """Hermes Autonomy Plugin — configurable priority queue, planning, and reflection.
 
-This started as Evey's local autonomy plugin, but the defaults now target a
+This started as one deployment's local autonomy plugin; the defaults now target a
 stock Hermes instance and can be customized without editing code.
 
 Config file (optional): ``$HERMES_HOME/evey-autonomy.json``

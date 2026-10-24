@@ -1,4 +1,4 @@
-"""Evey RAG — Search the knowledge base via Qdrant vector search.
+"""RAG — Search the knowledge base via Qdrant vector search.
 
 Provides semantic search over all indexed documents: plugins, skills, configs,
 research findings, memories, and goals.
@@ -22,7 +22,7 @@ COLLECTION = "evey-knowledge"
 SEARCH_SCHEMA = {
     "name": "knowledge_search",
     "description": (
-        "Search Evey's knowledge base for relevant information. "
+        "Search the agent's knowledge base for relevant information. "
         "Uses semantic search over all indexed docs: plugins, skills, config, "
         "research findings, memories, goals, hooks. "
         "Use this when you need to recall how something works, find a config, "

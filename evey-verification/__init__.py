@@ -1,4 +1,4 @@
-"""Evey Verification — check external targets exist before acting.
+"""Verification — check external targets exist before acting.
 
 Prevents hallucinated actions: verify URLs, GitHub repos, API endpoints,
 and local files before cloning, pushing, fetching, or writing.

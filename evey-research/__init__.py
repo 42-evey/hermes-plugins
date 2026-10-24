@@ -1,4 +1,4 @@
-"""Evey Research Plugin — real web research with SearXNG + Crawl4AI.
+"""Research Plugin — real web research with SearXNG + Crawl4AI.
 
 Provides tools for searching the web, extracting page content,
 and saving findings to the knowledge library with proper citations.
@@ -173,7 +173,7 @@ def extract_handler(args, **kwargs):
 
         # Fallback: direct fetch with urllib
         req = urllib.request.Request(url, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; Evey/1.0; +https://evey.cc)",
+            "User-Agent": "Mozilla/5.0 (compatible; evey-research/1.0)",
         })
         with urllib.request.urlopen(req, timeout=15) as resp:
             raw = resp.read().decode("utf-8", errors="replace")

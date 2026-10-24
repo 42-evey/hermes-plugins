@@ -1,12 +1,13 @@
-"""Evey Bridge Plugin — bidirectional communication with Claude Code (Mother).
+"""Bridge Plugin — bidirectional communication with Claude Code.
 
 Directory roles:
-  inbox/   — Evey writes tasks FOR Claude Code to process
-  outbox/  — Claude Code writes results/tasks FOR Evey to read
+  inbox/   — the agent writes tasks FOR Claude Code to process
+  outbox/  — Claude Code writes results/tasks FOR the agent to read
   channel.jsonl — real-time messages both directions
   archive/ — compressed old conversations (auto-rotated)
 
-Claude Code sends as "mother" in channel.jsonl.
+Claude Code sends as "claude-code" in channel.jsonl ("mother", the sender
+name older installs used, is still accepted).
 """
 
 import json
@@ -181,15 +182,15 @@ def handle_check(args, **kwargs):
         _auto_compress()
         results = []
 
-        # Check outbox (Claude Code → Evey results/tasks)
+        # Check outbox (Claude Code → agent results/tasks)
         outbox = BRIDGE_DIR / "outbox"
         for f in sorted(outbox.iterdir()):
             if f.is_file():
-                results.append({"type": "task_from_mother", "file": f.name, "content": f.read_text()[:2000]})
+                results.append({"type": "task_from_claude_code", "file": f.name, "content": f.read_text()[:2000]})
                 # Move processed files to active/
                 f.rename(BRIDGE_DIR / "active" / f.name)
 
-        # Check recent channel messages from mother/claude-code
+        # Check recent channel messages from Claude Code (legacy sender name: "mother")
         channel = BRIDGE_DIR / "channel.jsonl"
         last_read_file = BRIDGE_DIR / ".last_read"
         last_read_ts = ""
@@ -217,7 +218,7 @@ def handle_check(args, **kwargs):
                 last_read_file.write_text(latest_ts)
 
         if not results:
-            return json.dumps({"status": "empty", "message": "No new messages from Mother."})
+            return json.dumps({"status": "empty", "message": "No new messages from Claude Code."})
 
         return json.dumps({"status": "ok", "results": results, "count": len(results)})
     except Exception as e:

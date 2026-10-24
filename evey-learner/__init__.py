@@ -1,11 +1,11 @@
-"""Evey Learner Plugin — learn from every interaction, apply lessons to future ones.
+"""Learner Plugin — learn from every interaction, apply lessons to future ones.
 
 Two tools:
 1. learn_from_interaction — extract and store a lesson after any delegation/tool use
 2. apply_learnings — before a delegation, check past lessons for relevant patterns
 
 Learnings persist in workspace/orchestrator/learnings.jsonl.
-Unique to Evey: genuine experiential learning across sessions.
+Experiential learning that persists across sessions.
 """
 
 import json

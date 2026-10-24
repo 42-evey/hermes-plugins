@@ -1,8 +1,8 @@
-"""Evey Email Guard Plugin — screens incoming emails for prompt injection.
+"""Email Guard Plugin — screens incoming emails for prompt injection.
 
-Emails are a public attack surface. Anyone can email evey@evey.cc and try
+Emails are a public attack surface. Anyone who knows the agent's address can try
 to inject instructions. This plugin screens email content with a separate
-classifier call before Evey processes it with her main brain.
+classifier call before the agent processes it in its main conversation.
 
 Strategy:
 1. Run email through a classifier call (Hermes ctx.llm, the user's active model)

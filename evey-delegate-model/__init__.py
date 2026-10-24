@@ -1,4 +1,4 @@
-"""Evey Delegate Model Plugin — delegate a task to a model via Hermes.
+"""Delegate Model Plugin — delegate a task to a model via Hermes.
 
 Bypasses hermes delegate_task entirely (which has bugs and requires
 parent_agent context). Instead, makes one out-of-band completion through

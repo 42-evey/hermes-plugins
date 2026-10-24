@@ -1,5 +1,5 @@
 name: evey-validate
-version: 1.0.1
+version: 1.0.2
 description: Validates delegation outputs — catches hallucinations and errors from free models
 provides_tools:
   - validate_output

@@ -1,10 +1,10 @@
-"""Evey Cache Plugin — smart caching for delegation results.
+"""Cache Plugin — smart caching for delegation results.
 
 Wraps delegate_with_model with a SHA-256 content-addressed cache.
 Cache hits return instantly at zero cost. 24-hour TTL, 100-entry LRU.
 
 Saves tokens on recurring questions: daily checks, repeated research,
-status queries. Unique to Evey: cost-aware caching for AI delegation.
+status queries. Cost-aware caching for AI delegation.
 
 Calls go through Hermes (ctx.llm) on the user's active model. A `model`
 argument is honoured only when the operator sets

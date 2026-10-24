@@ -1,4 +1,4 @@
-"""Evey Goals Plugin — autonomous objective management."""
+"""Goals Plugin — autonomous objective management."""
 
 import json
 import os
@@ -43,7 +43,7 @@ SCHEMA = {
 
 def _read_goals():
     if not GOALS_PATH.exists():
-        return "# Evey's Goals\n\n## Active\n\n## Completed\n\n## Backlog\n"
+        return "# Goals\n\n## Active\n\n## Completed\n\n## Backlog\n"
     return GOALS_PATH.read_text()
 
 

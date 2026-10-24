@@ -1,5 +1,5 @@
 name: evey-telegram-ux
-version: "1.0"
+version: "1.0.1"
 description: Rich Telegram formatting — status cards, delegation results, dashboards
 author: evey
 provides_tools:

@@ -1,4 +1,4 @@
-"""Evey Wallet Plugin — monitor crypto wallet balances across chains.
+"""Wallet Plugin — monitor crypto wallet balances across chains.
 
 Checks BTC, ETH, SOL, XRP, and DOGE wallet balances using free public APIs.
 Multiple fallback APIs per chain. No API keys needed.
@@ -266,7 +266,7 @@ def handler(args, **kwargs):
     output = "Wallet Balances:\n" + "\n".join(results)
     if deposits_detected:
         output += "\n\nNEW DEPOSITS DETECTED:\n" + "\n".join(deposits_detected)
-        output += "\nAlert V immediately!"
+        output += "\nTell the user about the new deposit."
 
     return output
 

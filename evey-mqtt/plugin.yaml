@@ -1,6 +1,6 @@
 name: evey-mqtt
-version: 2.0.1
-description: Auto-connecting MQTT real-time event stream. Connects on plugin load, subscribes to bridge/events/health/mother topics, buffers messages.
+version: 2.0.2
+description: Auto-connecting MQTT real-time event stream. Connects on plugin load, subscribes to the evey/bridge, evey/events, evey/health and evey/mother (Claude Code) topics, buffers messages.
 provides_tools:
   - mqtt_subscribe
   - mqtt_publish_event

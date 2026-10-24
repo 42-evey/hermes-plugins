@@ -1,14 +1,14 @@
-"""Evey Habits — learn V's patterns over time.
+"""Habits — learn the user's patterns over time.
 
 Tracks:
-- When V messages (hour distribution → predict active hours)
-- Topics V asks about (frequency → anticipate interests)
+- When the user messages (hour distribution → predict active hours)
+- Topics the user asks about (frequency → anticipate interests)
 - Response preferences (length, detail level, tone)
 - Work rhythm (busy times, break patterns)
 
-Call habits_log after every V interaction. Call habits_insights
+Call habits_log after every user interaction. Call habits_insights
 to get a summary of learned patterns. Self-improve cron uses
-this to update Evey's behavior.
+this to update the agent's behavior.
 """
 
 import json
@@ -51,8 +51,8 @@ def _save(data):
 LOG_SCHEMA = {
     "name": "habits_log",
     "description": (
-        "Log an interaction with V to learn patterns. Call after V messages you. "
-        "Over time this builds a profile of V's work habits, interests, and preferences."
+        "Log an interaction with the user to learn patterns. Call after the user messages you. "
+        "Over time this builds a profile of the user's work habits, interests, and preferences."
     ),
     "parameters": {
         "type": "object",
@@ -63,16 +63,16 @@ LOG_SCHEMA = {
             },
             "v_message_length": {
                 "type": "number",
-                "description": "Approximate character count of V's message",
+                "description": "Approximate character count of the user's message",
             },
             "v_mood": {
                 "type": "string",
                 "enum": ["focused", "casual", "urgent", "curious", "frustrated"],
-                "description": "V's apparent mood/energy",
+                "description": "The user's apparent mood/energy",
             },
             "response_was_good": {
                 "type": "boolean",
-                "description": "Did V seem satisfied with your response? (true if no correction needed)",
+                "description": "Did the user seem satisfied with your response? (true if no correction needed)",
             },
         },
         "required": ["topic"],
@@ -82,7 +82,7 @@ LOG_SCHEMA = {
 INSIGHTS_SCHEMA = {
     "name": "habits_insights",
     "description": (
-        "Get insights about V's patterns — active hours, favorite topics, "
+        "Get insights about the user's patterns — active hours, favorite topics, "
         "communication preferences. Use during self-improve or when adapting behavior."
     ),
     "parameters": {"type": "object", "properties": {}},
@@ -133,7 +133,7 @@ def handle_insights(args, **kwargs):
     data = _load()
 
     if data["total_interactions"] == 0:
-        return json.dumps({"status": "no_data", "message": "No interactions logged yet. Call habits_log after V messages."})
+        return json.dumps({"status": "no_data", "message": "No interactions logged yet. Call habits_log after the user messages."})
 
     # Peak hours (top 3)
     hours = data.get("hour_counts", {})
@@ -179,17 +179,17 @@ def _generate_recommendations(data):
     hours = data.get("hour_counts", {})
     if hours:
         peak = max(hours, key=hours.get)
-        recs.append(f"V is most active around {peak}:00 — prioritize proactive nudges near this time")
+        recs.append(f"The user is most active around {peak}:00 — prioritize proactive nudges near this time")
 
     topics = data.get("topic_counts", {})
     if topics:
         top = max(topics, key=topics.get)
-        recs.append(f"V asks about '{top}' most often — stay prepared on this topic")
+        recs.append(f"The user asks about '{top}' most often — stay prepared on this topic")
 
     recent = data["interactions"][-20:]
     frustrated = sum(1 for i in recent if i.get("v_mood") == "frustrated")
     if frustrated > 3:
-        recs.append("V has been frustrated recently — be extra careful with response quality")
+        recs.append("The user has been frustrated recently — be extra careful with response quality")
 
     return recs
 
@@ -198,4 +198,4 @@ def register(ctx):
     HABITS_FILE.parent.mkdir(parents=True, exist_ok=True)
     ctx.register_tool(name="habits_log", toolset="evey_habits", schema=LOG_SCHEMA, handler=handle_log)
     ctx.register_tool(name="habits_insights", toolset="evey_habits", schema=INSIGHTS_SCHEMA, handler=handle_insights)
-    logger.info("evey-habits loaded — learning V's patterns")
+    logger.info("evey-habits loaded — learning the user's patterns")
