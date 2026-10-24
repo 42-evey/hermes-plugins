@@ -1,7 +1,10 @@
 """Evey Memory Consolidation — extracts facts from daily conversations.
 
-Runs daily at 3am. Queries Langfuse for yesterday's traces, uses local
-qwen35-4b to extract key facts, updates MEMORY.md and Qdrant vectors.
+Runs daily at 3am. Queries Langfuse for yesterday's traces, uses the
+user's active model (Hermes ctx.llm) to extract key facts, updates
+MEMORY.md and Qdrant vectors.
+
+Needs LANGFUSE_HOST, LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY.
 """
 
 import json
@@ -12,14 +15,27 @@ import urllib.error
 from base64 import b64encode
 from pathlib import Path
 
-LITELLM_URL = os.environ.get("OPENAI_BASE_URL", "")
-LITELLM_KEY = os.environ.get("OPENAI_API_KEY", "")
 LANGFUSE_HOST = os.environ.get("LANGFUSE_HOST", "")
 QDRANT_URL = "http://hermes-qdrant:6333"
 OLLAMA_URL = "http://hermes-ollama:11434"
 MEMORY_PATH = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))) / "memories" / "MEMORY.md"
-EXTRACT_MODEL = "mimo-v2-pro"
 EMBED_MODEL = "snowflake-arctic-embed2"
+
+_CTX = None  # set by register(); LLM calls go through ctx.llm
+
+
+def call_llm(prompt, max_tokens=200, temperature=0.3):
+    """One completion on the user's active model. Returns text or None."""
+    if _CTX is None:
+        return None
+    try:
+        result = _CTX.llm.complete(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=temperature, purpose="evey-memory-consolidate",
+        )
+    except Exception:
+        return None
+    return (result.text or "").strip() or None
 CHAR_LIMIT = 4200
 
 SCORE_PROMPT = """Rate the importance of this fact for an AI agent's long-term memory (1-10).
@@ -91,25 +107,15 @@ def _langfuse_query(hours_back=24):
         return ["Memory consolidation unavailable"]
 
 
-def _load_call_llm():
-    import importlib.util as _iu, os as _os
-    _spec = _iu.spec_from_file_location("evey_utils", _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "evey_utils.py"))
-    _eu = _iu.module_from_spec(_spec)
-    _spec.loader.exec_module(_eu)
-    return _eu.call_llm
-
-
 def _extract_facts(trace_summaries):
-    call_llm = _load_call_llm()
     text = "\n".join(trace_summaries[:15])
-    result = call_llm(EXTRACT_MODEL, EXTRACT_PROMPT.format(traces=text[:3000]), max_tokens=300, temperature=0.3)
+    result = call_llm(EXTRACT_PROMPT.format(traces=text[:3000]), max_tokens=300, temperature=0.3)
     return result or "Extraction failed"
 
 
 def _score_fact(fact):
-    """Score a fact's importance (1-10) using local model."""
-    call_llm = _load_call_llm()
-    text = call_llm(EXTRACT_MODEL, SCORE_PROMPT.format(fact=fact), max_tokens=5, temperature=0)
+    """Score a fact's importance (1-10) using the active model."""
+    text = call_llm(SCORE_PROMPT.format(fact=fact), max_tokens=5, temperature=0)
     if text:
         try:
             return int("".join(c for c in text if c.isdigit())[:2])
@@ -184,6 +190,8 @@ def _embed_to_qdrant(facts):
 
 def handler(args, **kwargs):
     try:
+        if not LANGFUSE_HOST:
+            return json.dumps({"status": "error", "error": "not configured: set LANGFUSE_HOST, LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY"})
         hours = args.get("hours_back", 24)
         traces = _langfuse_query(hours)
         if not traces:
@@ -202,5 +210,7 @@ def handler(args, **kwargs):
 
 
 def register(ctx):
+    global _CTX
+    _CTX = ctx
     ctx.register_tool(name="consolidate_daily_memory", toolset="evey_memory",
         schema=SCHEMA, handler=handler)

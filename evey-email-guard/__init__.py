@@ -1,11 +1,11 @@
 """Evey Email Guard Plugin — screens incoming emails for prompt injection.
 
 Emails are a public attack surface. Anyone can email evey@evey.cc and try
-to inject instructions. This plugin screens email content using a cheap
-local model before Evey processes it with her main brain.
+to inject instructions. This plugin screens email content with a separate
+classifier call before Evey processes it with her main brain.
 
 Strategy:
-1. Run email through a cheap local model (qwen35-4b) as a classifier
+1. Run email through a classifier call (Hermes ctx.llm, the user's active model)
 2. Check for common injection patterns via regex
 3. Return a safety verdict: safe / suspicious / blocked
 4. Include the sanitized content (stripped of injection markers)
@@ -14,12 +14,22 @@ Strategy:
 import json
 import os
 import re
-import urllib.request
-import urllib.error
 
-LITELLM_URL = os.environ.get("OPENAI_BASE_URL", "")
-LITELLM_KEY = os.environ.get("OPENAI_API_KEY", "")
-SCREENING_MODEL = "qwen35-4b"  # local, FREE, fast
+_CTX = None  # set by register(); LLM calls go through ctx.llm
+
+
+def call_llm(prompt, max_tokens=200, temperature=0.3):
+    """One completion on the user's active model. Returns text or None."""
+    if _CTX is None:
+        return None
+    try:
+        result = _CTX.llm.complete(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=temperature, purpose="evey-email-guard",
+        )
+    except Exception:
+        return None
+    return (result.text or "").strip() or None
 
 # Regex patterns that indicate prompt injection attempts
 INJECTION_PATTERNS = [
@@ -112,11 +122,10 @@ def _sanitize(text):
 
 
 def _llm_classify(content):
-    """Use a cheap local model to classify the email."""
+    """Use a classifier call to classify the email."""
     try:
-        from evey_utils import call_llm
         prompt = SCREENING_PROMPT.format(content=content[:2000])
-        reply = call_llm(SCREENING_MODEL, prompt, max_tokens=10, temperature=0)
+        reply = call_llm(prompt, max_tokens=10, temperature=0)
 
         if not reply:
             return "safe"  # Default safe if screening fails
@@ -195,6 +204,8 @@ def handler(args, **kwargs):
 
 
 def register(ctx):
+    global _CTX
+    _CTX = ctx
     ctx.register_tool(
         name="email_screen",
         toolset="evey_email_guard",

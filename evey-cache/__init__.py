@@ -5,6 +5,11 @@ Cache hits return instantly at zero cost. 24-hour TTL, 100-entry LRU.
 
 Saves tokens on recurring questions: daily checks, repeated research,
 status queries. Unique to Evey: cost-aware caching for AI delegation.
+
+Calls go through Hermes (ctx.llm) on the user's active model. A `model`
+argument is honoured only when the operator sets
+plugins.entries.evey-cache.llm.allow_model_override: true in config.yaml;
+otherwise the active model is used and the result says so.
 """
 
 import hashlib
@@ -15,6 +20,8 @@ import time
 from pathlib import Path
 
 logger = logging.getLogger("evey.cache")
+
+_CTX = None  # set by register(); LLM calls go through ctx.llm
 
 HERMES_HOME = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes")))
 CACHE_DIR = HERMES_HOME / "workspace" / "orchestrator"
@@ -32,14 +39,14 @@ SCHEMA = {
         "at ZERO cost. Otherwise delegates normally and caches the result.\n\n"
         "Use for: recurring questions, daily status checks, repeated research topics, "
         "any delegation where the answer doesn't change frequently.\n\n"
-        "Cache: 100 entries max, 24h TTL, LRU eviction. All free."
+        "Cache: 100 entries max, 24h TTL, LRU eviction."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "model": {
                 "type": "string",
-                "description": "Model to use (e.g., 'mimo-v2-pro', 'llama70b-free')",
+                "description": "Model id to use (optional; default is the active model)",
             },
             "goal": {
                 "type": "string",
@@ -58,7 +65,7 @@ SCHEMA = {
                 "description": "Force a fresh delegation, ignoring cache (default: false)",
             },
         },
-        "required": ["model", "goal"],
+        "required": ["goal"],
     },
 }
 
@@ -112,22 +119,39 @@ def _save_cache(cache):
 
 
 def _delegate_fresh(model, goal, context, max_tokens):
-    """Call model via shared evey_utils (includes retry + reasoning recovery)."""
-    from evey_utils import call_model
+    """One ctx.llm call. Returns (content, tokens, model_used, note).
+
+    With no model, runs on the user's active model. With a model, asks Hermes
+    for it; that needs the operator grant
+    plugins.entries.evey-cache.llm.allow_model_override: true, and without it
+    the call falls back to the active model and says so in the note.
+    """
+    if _CTX is None:
+        raise RuntimeError("plugin not registered")
+    from agent.plugin_llm import PluginLlmTrustError
 
     prompt = goal
     if context:
         prompt = f"CONTEXT:\n{context}\n\nTASK:\n{goal}\n\nIMPORTANT: Always respond in English."
 
-    result = call_model(model, prompt, max_tokens=max_tokens, temperature=0.7, timeout=120)
-    if result is None:
-        raise RuntimeError(f"{model} returned empty after retries")
-    return result["content"], result["tokens"]
+    kwargs = dict(messages=[{"role": "user", "content": prompt}], max_tokens=int(max_tokens),
+                  temperature=0.7, timeout=300, purpose="evey-cache")
+    note = None
+    try:
+        result = _CTX.llm.complete(model=model, **kwargs) if model else _CTX.llm.complete(**kwargs)
+    except PluginLlmTrustError:
+        note = (f"model '{model}' not allowed (set plugins.entries.evey-cache.llm."
+                "allow_model_override: true); used the active model")
+        result = _CTX.llm.complete(**kwargs)
+    content = (result.text or "").strip()
+    if not content:
+        raise RuntimeError("model returned an empty response")
+    return content, result.usage.total_tokens or 0, result.model, note
 
 
 def handler(args, **kwargs):
     try:
-        model = args.get("model", "mimo-v2-pro")
+        model = (args.get("model") or "").strip()
         goal = args.get("goal", "")
         context = args.get("context", "")
         max_tokens = args.get("max_tokens", 2000)
@@ -169,9 +193,9 @@ def handler(args, **kwargs):
                     })
 
         # Cache miss — delegate fresh
-        logger.info(f"Cache MISS: key={key}, delegating to {model}")
+        logger.info(f"Cache MISS: key={key}, delegating to {model or 'active model'}")
         try:
-            content, tokens = _delegate_fresh(model, goal, context, max_tokens)
+            content, tokens, model_used, note = _delegate_fresh(model, goal, context, max_tokens)
         except Exception as e:
             return json.dumps({
                 "status": "delegation_failed",
@@ -190,7 +214,7 @@ def handler(args, **kwargs):
         cache = _load_cache()
         cache[key] = {
             "result": content,
-            "model": model,
+            "model": model_used,
             "goal_preview": goal[:200],
             "tokens": tokens,
             "cached_at": now,
@@ -200,21 +224,25 @@ def handler(args, **kwargs):
         }
         cache = _save_cache(cache)
 
-        return json.dumps({
+        out = {
             "status": "cache_miss",
             "result": content,
-            "model": model,
+            "model": model_used,
             "tokens": tokens,
             "cache_key": key,
             "cache_size": len(cache),
-            "cost": "free (but tokens used)",
-        })
+        }
+        if note:
+            out["note"] = note
+        return json.dumps(out)
 
     except Exception as e:
         return json.dumps({"status": "error", "error": str(e)})
 
 
 def register(ctx):
+    global _CTX
+    _CTX = ctx
     ctx.register_tool(
         name="cached_delegate",
         toolset="evey_cache",

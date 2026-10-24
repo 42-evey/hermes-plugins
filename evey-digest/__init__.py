@@ -32,16 +32,12 @@ SCHEMA = {
 
 def _http_get(url, headers=None):
     """GET request with timeout. Returns parsed JSON or None."""
-    if headers:
-        req = urllib.request.Request(url, headers=headers)
-        try:
-            with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
-                return json.loads(resp.read().decode())
-        except Exception:
-            return None
-    else:
-        from evey_utils import http_get_json
-        return http_get_json(url, timeout=HTTP_TIMEOUT)
+    req = urllib.request.Request(url, headers=headers or {})
+    try:
+        with urllib.request.urlopen(req, timeout=HTTP_TIMEOUT) as resp:
+            return json.loads(resp.read().decode())
+    except Exception:
+        return None
 
 
 def _langfuse_auth_header():

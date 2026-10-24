@@ -1,12 +1,23 @@
-"""Evey Delegate Model Plugin — call any model directly via LiteLLM.
+"""Evey Delegate Model Plugin — delegate a task to a model via Hermes.
 
 Bypasses hermes delegate_task entirely (which has bugs and requires
-parent_agent context). Instead, calls LiteLLM's OpenAI-compatible API
-directly. Works from ANY context: Telegram, cron, plugins, anywhere.
+parent_agent context). Instead, makes one out-of-band completion through
+Hermes (ctx.llm). Works from ANY context: Telegram, cron, plugins, anywhere.
 
-Supports autonomous fallback — tries up to 4 models if the first fails.
-Each model gets up to 3 retries with exponential backoff before moving
-to the next model in the chain.
+By default every call runs on the user's active provider and model. A
+`model` argument is honoured only when the operator grants it in
+config.yaml:
+
+    plugins:
+      entries:
+        evey-delegate-model:
+          llm:
+            allow_model_override: true
+
+Without the grant the call falls back to the active model and the result
+says so. Sensitive content never uses a `model` override.
+
+Each call gets up to 3 retries with exponential backoff.
 """
 
 import concurrent.futures
@@ -14,8 +25,6 @@ import json
 import logging
 import os
 import time
-import urllib.request
-import urllib.error
 
 logger = logging.getLogger("evey.delegate_model")
 
@@ -26,24 +35,23 @@ try:
 except Exception:
     _telemetry = None
 
-LITELLM_URL = os.environ.get("OPENAI_BASE_URL", "")
-LITELLM_KEY = os.environ.get("OPENAI_API_KEY", "")
+_CTX = None  # set by register(); LLM calls go through ctx.llm
 
-# Max retries per individual model before falling through to the next
+# Max retries per call
 MAX_RETRIES_PER_MODEL = 3
 
 SCHEMA = {
     "name": "delegate_with_model",
     "description": (
-        "Delegate a task to another model via LiteLLM. Supports smart routing, "
-        "sensitivity detection, and automatic fallback across free/local/paid models."
+        "Delegate a task to a model in a separate, out-of-band call. Runs on the "
+        "active model unless a model is given and allowed; detects sensitive content."
     ),
     "parameters": {
         "type": "object",
         "properties": {
             "model": {
                 "type": "string",
-                "description": "Model to use (e.g., 'nemotron-free', 'deepseek-r1-local', 'qwen-coder-free')",
+                "description": "Model id to use (optional; default is the active model)",
             },
             "goal": {
                 "type": "string",
@@ -58,46 +66,17 @@ SCHEMA = {
                 "description": "Max response length (default: 2000)",
             },
         },
-        "required": ["model", "goal"],
+        "required": ["goal"],
     },
 }
 
-FALLBACK_CHAIN = [
-    "mimo-v2-pro",       # FREE via OpenClaw — confirmed working with reasoning:exclude
-    "nemotron-free",     # CONFIRMED working, no think-block issues
-    "llama70b-free",     # works when not rate limited
-]
-
-# Smart routing — ALL delegation goes to FREE CLOUD models
-# NEVER use local models for delegation (GPU overload → black screen)
-# Local Ollama is ONLY for hermes-agent brain's smart routing (cheap turns)
-# Priority: confirmed-working models first, then others as fallback
-# mimo-v2-pro: FREE, 1T params, works with reasoning:exclude
-# nemotron-free: FREE, reliable, no think-block issues
-# llama70b-free: FREE, reliable but rate-limited
-# step-flash-free: FREE, works with reasoning:exclude (MoE 196B)
-# qwen-coder-free: FREE, works with reasoning:exclude (best coder)
-TASK_ROUTING = {
-    "code": ["mimo-v2-pro", "qwen-coder-free", "nemotron-free"],
-    "reasoning": ["mimo-v2-pro", "step-flash-free", "nemotron-free"],
-    "research": ["mimo-v2-pro", "nemotron-free", "llama70b-free"],
-    "creative": ["mimo-v2-pro", "nemotron-free", "llama70b-free"],
-    "summary": ["mimo-v2-pro", "nemotron-free", "nemotron-nano-free"],
-    "analysis": ["mimo-v2-pro", "step-flash-free", "nemotron-free"],
-    "uncensored": ["mimo-v2-pro", "llama70b-free"],
-    "vision": ["mimo-v2-pro"],
-    "multimodal": ["mimo-v2-pro"],
-}
-
-# Sensitive keywords — route to LOCAL ONLY (never external)
+# Sensitive keywords — never sent to a model override
 SENSITIVE_PATTERNS = [
     "password", "api key", "api_key", "secret key", "secret_key",
     "token", "credential", "private key",
     "confidential", ".env", "ssh key", "certificate",
     "auth token", "bearer", "my password", "my credentials",
 ]
-# Sensitive data → ONE local model only (never spin up multiple local models)
-LOCAL_ONLY_MODELS = ["qwen35-4b"]  # Single small model, minimal GPU impact
 
 
 def _detect_task_type(goal):
@@ -121,152 +100,121 @@ def _detect_task_type(goal):
 
 
 def _is_sensitive(text):
-    """Check if the task contains sensitive data that shouldn't go to external models."""
+    """Check if the task contains sensitive data that shouldn't go to a model override."""
     t = text.lower()
     return any(p in t for p in SENSITIVE_PATTERNS)
 
 
 def _call_model(model, prompt, max_tokens=2000):
-    """Direct call to LiteLLM with retry logic — works from any context.
+    """One ctx.llm call with retry logic — works from any context.
 
-    Retries up to MAX_RETRIES_PER_MODEL times with exponential backoff.
-    Treats empty/whitespace-only responses as failures that trigger retry.
-    Returns (content, usage, attempts) on success.
+    model=None runs on the user's active model. Retries up to
+    MAX_RETRIES_PER_MODEL times with exponential backoff; empty responses
+    count as failures. Returns (content, tokens, attempts, model_used, note).
     Raises on total failure after all retries exhausted.
     """
+    if _CTX is None:
+        raise RuntimeError("plugin not registered")
+    from agent.plugin_llm import PluginLlmTrustError
+
+    note = None
     last_error = None
     for attempt in range(1, MAX_RETRIES_PER_MODEL + 1):
+        kwargs = dict(messages=[{"role": "user", "content": prompt}], max_tokens=int(max_tokens),
+                      temperature=0.7, timeout=300, purpose="evey-delegate-model")
+        if model:
+            kwargs["model"] = model
         try:
-            data = json.dumps({
-                "model": model,
-                "messages": [{"role": "user", "content": prompt}],
-                "max_tokens": max_tokens,
-                "temperature": 0.7,
-            }).encode()
-
-            req = urllib.request.Request(
-                f"{LITELLM_URL}/chat/completions",
-                data=data,
-                headers={
-                    "Content-Type": "application/json",
-                    "Authorization": f"Bearer {LITELLM_KEY}",
-                },
-            )
-            with urllib.request.urlopen(req, timeout=120) as resp:
-                result = json.loads(resp.read())
-
-            msg = result["choices"][0]["message"]
-            content = msg.get("content", "") or ""
-            usage = result.get("usage", {})
-
-            # Recover from think-only responses (content=null, reasoning in separate field)
-            # Models like nemotron, deepseek-r1 return reasoning_content but no content
-            if not content.strip():
-                # Check all known reasoning fields
-                reasoning = (
-                    msg.get("reasoning_content")
-                    or msg.get("reasoning")
-                    or (msg.get("provider_specific_fields") or {}).get("reasoning_content")
-                    or (msg.get("provider_specific_fields") or {}).get("reasoning")
-                )
-                if reasoning and str(reasoning).strip():
-                    content = str(reasoning).strip()
-                    logger.info(f"{model} returned think-only response, recovered from reasoning_content ({len(content)} chars)")
-
-            # Treat empty/whitespace-only responses as failures (after reasoning recovery)
-            if not content or not content.strip():
-                last_error = f"{model} returned empty response (attempt {attempt})"
-                logger.warning(last_error)
-                if attempt < MAX_RETRIES_PER_MODEL:
-                    time.sleep(2 ** (attempt - 1))  # 1s, 2s backoff
-                    continue
-                raise RuntimeError(last_error)
-
-            if attempt > 1:
-                logger.info(f"{model} succeeded on retry {attempt}")
-            return content, usage, attempt
-
-        except (urllib.error.URLError, urllib.error.HTTPError,
-                TimeoutError, OSError, KeyError) as e:
-            last_error = f"{model} attempt {attempt}/{MAX_RETRIES_PER_MODEL}: {e}"
+            try:
+                result = _CTX.llm.complete(**kwargs)
+            except PluginLlmTrustError:
+                note = (f"model '{model}' not allowed (set plugins.entries.evey-delegate-model.llm."
+                        "allow_model_override: true); used the active model")
+                model = None
+                kwargs.pop("model", None)
+                result = _CTX.llm.complete(**kwargs)
+        except Exception as e:
+            last_error = f"attempt {attempt}/{MAX_RETRIES_PER_MODEL}: {e}"
             logger.warning(last_error)
             if attempt < MAX_RETRIES_PER_MODEL:
                 time.sleep(2 ** (attempt - 1))  # 1s, 2s backoff
-                continue
-            raise RuntimeError(last_error) from e
+            continue
+
+        content = (result.text or "").strip()
+        if content:
+            if attempt > 1:
+                logger.info(f"{result.model} succeeded on retry {attempt}")
+            return content, result.usage.total_tokens or 0, attempt, result.model, note
+
+        last_error = f"{result.model} returned empty response (attempt {attempt})"
+        logger.warning(last_error)
+        if attempt < MAX_RETRIES_PER_MODEL:
+            time.sleep(2 ** (attempt - 1))
+    raise RuntimeError(last_error or "no response")
 
 
 def handler(args, **kwargs):
     try:
-        model = args.get("model", "")
+        model = (args.get("model") or "").strip()
         goal = args.get("goal", "")
         context = args.get("context", "")
         max_tokens = args.get("max_tokens", 2000)
+
+        if not goal:
+            return json.dumps({"status": "error", "error": "No goal provided"})
 
         full_text = f"{goal} {context}"
         prompt = goal
         if context:
             prompt = f"CONTEXT:\n{context}\n\nTASK:\n{goal}\n\nIMPORTANT: Always respond in English."
 
-        # SECURITY: Check for sensitive content — force local models
+        task_type = _detect_task_type(goal)
+
+        # SECURITY: sensitive content never goes to a model override
         sensitive = _is_sensitive(full_text)
         if sensitive:
-            models_to_try = LOCAL_ONLY_MODELS
-            routing_reason = "SENSITIVE content detected — using LOCAL models only"
+            use_model = None
+            routing_reason = "SENSITIVE content detected — active model only, no override"
         elif model:
-            # User specified a model — respect it but add fallbacks
-            models_to_try = [model] + [m for m in FALLBACK_CHAIN if m != model]
+            use_model = model
             routing_reason = f"User-specified: {model}"
         else:
-            # Smart routing — pick best model for task type
-            task_type = _detect_task_type(goal)
-            models_to_try = TASK_ROUTING.get(task_type, FALLBACK_CHAIN)
-            routing_reason = f"Auto-routed: {task_type} → {models_to_try[0]}"
+            use_model = None
+            routing_reason = f"Active model ({task_type} task)"
 
-        last_error = None
-        models_tried = []
-        for attempt_model in models_to_try[:4]:
-            try:
-                content, usage, retries_used = _call_model(attempt_model, prompt, max_tokens)
-                models_tried.append({"model": attempt_model, "status": "success", "retries": retries_used})
-                logger.info(
-                    f"Delegation succeeded: model={attempt_model}, "
-                    f"retries={retries_used}, tokens={usage.get('total_tokens', 0)}"
-                )
-                # Emit telemetry event
-                if _telemetry:
-                    task_type = _detect_task_type(goal)
-                    _telemetry.track_delegation(
-                        model=attempt_model, task_type=task_type,
-                        success=True, tokens=usage.get("total_tokens", 0),
-                    )
-                return json.dumps({
-                    "status": "success",
-                    "model_used": attempt_model,
-                    "model_retries": retries_used,
-                    "models_tried": models_tried,
-                    "routing": routing_reason,
-                    "sensitive": sensitive,
-                    "result": content,
-                    "tokens": usage.get("total_tokens", 0),
-                })
-            except Exception as e:
-                last_error = str(e)
-                models_tried.append({"model": attempt_model, "status": "failed", "error": last_error[:100]})
-                logger.warning(f"Model {attempt_model} exhausted all retries: {last_error[:100]}")
-                continue
+        try:
+            content, tokens, retries_used, model_used, note = _call_model(use_model, prompt, max_tokens)
+        except Exception as e:
+            last_error = str(e)
+            logger.error(f"Delegation failed after retries: {last_error[:200]}")
+            if _telemetry:
+                _telemetry.track_error("delegation", f"Delegation failed: {last_error[:100]}")
+            return json.dumps({
+                "status": "failed",
+                "error": f"Delegation failed (retried {MAX_RETRIES_PER_MODEL}x)",
+                "last_error": last_error[:200],
+                "routing": routing_reason,
+            })
 
-        logger.error(
-            f"All models failed after retries. Tried: {[m['model'] for m in models_tried]}"
-        )
+        logger.info(f"Delegation succeeded: model={model_used}, retries={retries_used}, tokens={tokens}")
+        # Emit telemetry event
         if _telemetry:
-            _telemetry.track_error("delegation", f"All models failed: {[m['model'] for m in models_tried]}")
-        return json.dumps({
-            "status": "failed",
-            "error": f"All {min(4, len(models_to_try))} models failed (each retried {MAX_RETRIES_PER_MODEL}x)",
-            "last_error": last_error[:200] if last_error else "unknown",
-            "models_tried": models_tried,
-        })
+            _telemetry.track_delegation(
+                model=model_used, task_type=task_type,
+                success=True, tokens=tokens,
+            )
+        out = {
+            "status": "success",
+            "model_used": model_used,
+            "model_retries": retries_used,
+            "routing": routing_reason,
+            "sensitive": sensitive,
+            "result": content,
+            "tokens": tokens,
+        }
+        if note:
+            out["note"] = note
+        return json.dumps(out)
 
     except Exception as e:
         return json.dumps({"status": "error", "error": str(e)})
@@ -343,6 +291,8 @@ def parallel_handler(args, **kwargs):
 
 
 def register(ctx):
+    global _CTX
+    _CTX = ctx
     ctx.register_tool(
         name="delegate_with_model",
         toolset="evey_delegate",

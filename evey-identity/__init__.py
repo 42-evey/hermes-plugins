@@ -5,7 +5,7 @@ based on what she learns. Adds a "Learned Behaviors" section to SOUL.md
 that grows organically from experience.
 
 Runs during self-improve cron (3am) or on-demand.
-Uses local model (qwen35-4b) for reflection — $0 cost.
+Reflection runs through Hermes (ctx.llm) on the user's active model.
 """
 
 import json
@@ -13,15 +13,24 @@ import os
 import time
 from pathlib import Path
 
-import importlib.util as _iu, os as _os
-_spec = _iu.spec_from_file_location("evey_utils", _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "evey_utils.py"))
-_eu = _iu.module_from_spec(_spec)
-_spec.loader.exec_module(_eu)
-call_llm = _eu.call_llm
-
 SOUL_PATH = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes"))) / "SOUL.md"
-REFLECT_MODEL = "qwen35-4b"
 MAX_LEARNED = 10  # Max learned behaviors to keep
+
+_CTX = None  # set by register(); LLM calls go through ctx.llm
+
+
+def call_llm(prompt, max_tokens=200, temperature=0.3):
+    """One completion on the user's active model. Returns text or None."""
+    if _CTX is None:
+        return None
+    try:
+        result = _CTX.llm.complete(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=temperature, purpose="evey-identity",
+        )
+    except Exception:
+        return None
+    return (result.text or "").strip() or None
 
 SCHEMA = {
     "name": "update_identity",
@@ -60,8 +69,8 @@ Behavioral rule:"""
 
 
 def _extract_rule(reflection):
-    """Use cheap local model to distill reflection into a rule."""
-    return call_llm(REFLECT_MODEL, REFLECT_PROMPT.format(reflection=reflection), max_tokens=50, temperature=0.3)
+    """Use the active model to distill reflection into a rule."""
+    return call_llm(REFLECT_PROMPT.format(reflection=reflection), max_tokens=50, temperature=0.3)
 
 
 def handler(args, **kwargs):
@@ -116,5 +125,7 @@ def handler(args, **kwargs):
 
 
 def register(ctx):
+    global _CTX
+    _CTX = ctx
     ctx.register_tool(name="update_identity", toolset="evey_identity",
         schema=SCHEMA, handler=handler)

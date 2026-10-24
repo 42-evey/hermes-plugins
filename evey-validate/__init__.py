@@ -7,20 +7,28 @@ results, run them through validation checks:
 3. Source verification hint (does it cite checkable facts?)
 4. Format compliance (does it match what was asked?)
 
-Uses cheap local model for validation — $0 cost.
+Validation runs through Hermes (ctx.llm) on the user's active model.
 """
 
 import json
 import os
 import re
 
-import importlib.util as _iu, os as _os
-_spec = _iu.spec_from_file_location("evey_utils", _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "evey_utils.py"))
-_eu = _iu.module_from_spec(_spec)
-_spec.loader.exec_module(_eu)
-call_llm = _eu.call_llm
+_CTX = None  # set by register(); LLM calls go through ctx.llm
 
-VALIDATE_MODEL = "qwen35-4b"
+
+def call_llm(prompt, max_tokens=200, temperature=0.3):
+    """One completion on the user's active model. Returns text or None."""
+    if _CTX is None:
+        return None
+    try:
+        result = _CTX.llm.complete(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=temperature, purpose="evey-validate",
+        )
+    except Exception:
+        return None
+    return (result.text or "").strip() or None
 
 SCHEMA = {
     "name": "validate_output",
@@ -78,7 +86,7 @@ Example: SCORE: 7 | ISSUES: Version number unverified, otherwise solid"""
 
 
 def _validate_llm(prompt):
-    result = call_llm(VALIDATE_MODEL, prompt, max_tokens=100, temperature=0)
+    result = call_llm(prompt, max_tokens=100, temperature=0)
     return result or "SCORE: 5 | ISSUES: Validation unavailable"
 
 
@@ -129,6 +137,8 @@ def handler(args, **kwargs):
 
 
 def register(ctx):
+    global _CTX
+    _CTX = ctx
     ctx.register_tool(
         name="validate_output",
         toolset="evey_validate",

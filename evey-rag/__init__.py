@@ -2,14 +2,19 @@
 
 Provides semantic search over all indexed documents: plugins, skills, configs,
 research findings, memories, and goals.
+
+Needs QDRANT_URL (e.g. http://localhost:6333) and EMBED_BASE_URL, the root
+of an OpenAI-compatible server that serves /v1/embeddings for EMBED_MODEL
+(key from LITELLM_KEY or OPENAI_API_KEY, if it needs one). Hermes's ctx.llm
+has no embeddings call, so this stays a direct HTTP call.
 """
 
 import json
 import os
 import urllib.request
 
-QDRANT_URL = "http://hermes-qdrant:6333"
-LITELLM_URL = "http://hermes-litellm:4000"
+QDRANT_URL = os.environ.get("QDRANT_URL", "").rstrip("/")
+LITELLM_URL = os.environ.get("EMBED_BASE_URL", "").rstrip("/")
 LITELLM_KEY = os.environ.get("LITELLM_KEY", os.environ.get("OPENAI_API_KEY", ""))
 EMBED_MODEL = "arctic-embed"
 COLLECTION = "evey-knowledge"
@@ -82,6 +87,8 @@ def _search(vector, limit=5, doc_type=None):
 
 
 def knowledge_search(query, limit=5, doc_type=None):
+    if not QDRANT_URL or not LITELLM_URL:
+        return json.dumps({"error": "not configured: set QDRANT_URL and EMBED_BASE_URL"})
     try:
         vector = _embed(query)
         result = _search(vector, limit, doc_type)
@@ -105,6 +112,8 @@ def knowledge_search(query, limit=5, doc_type=None):
 
 
 def knowledge_stats():
+    if not QDRANT_URL:
+        return json.dumps({"error": "not configured: set QDRANT_URL"})
     try:
         req = urllib.request.Request(f"{QDRANT_URL}/collections/{COLLECTION}")
         with urllib.request.urlopen(req, timeout=5) as resp:

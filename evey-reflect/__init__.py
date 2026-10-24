@@ -2,20 +2,29 @@
 
 Before sending important outputs, run them through a critique loop:
 Generate -> Critique -> Correct (max 3 iterations).
-Uses cheap local model for critique to keep costs at $0.
+The critique runs through Hermes (ctx.llm) on the user's active model.
 """
 
 import json
 import os
 
-import importlib.util as _iu, os as _os
-_spec = _iu.spec_from_file_location("evey_utils", _os.path.join(_os.path.dirname(_os.path.dirname(__file__)), "evey_utils.py"))
-_eu = _iu.module_from_spec(_spec)
-_spec.loader.exec_module(_eu)
-call_llm = _eu.call_llm
-
-CRITIQUE_MODEL = "qwen35-4b"  # FREE local model
 MAX_ITERATIONS = 3
+
+_CTX = None  # set by register(); LLM calls go through ctx.llm
+
+
+def call_llm(prompt, max_tokens=200, temperature=0.3):
+    """One completion on the user's active model. Returns text or None."""
+    if _CTX is None:
+        return None
+    try:
+        result = _CTX.llm.complete(
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=max_tokens, temperature=temperature, purpose="evey-reflect",
+        )
+    except Exception:
+        return None
+    return (result.text or "").strip() or None
 
 SCHEMA = {
     "name": "reflect_on_output",
@@ -67,7 +76,7 @@ Keep your critique under 100 words."""
 
 
 def _critique(prompt):
-    result = call_llm(CRITIQUE_MODEL, prompt, max_tokens=200, temperature=0.3)
+    result = call_llm(prompt, max_tokens=200, temperature=0.3)
     return result or "PASS: Critique unavailable"
 
 
@@ -94,6 +103,8 @@ def handler(args, **kwargs):
 
 
 def register(ctx):
+    global _CTX
+    _CTX = ctx
     ctx.register_tool(
         name="reflect_on_output",
         toolset="evey_reflect",
