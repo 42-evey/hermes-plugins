@@ -2,7 +2,7 @@
 name: delegation-brief
 description: "Writing a delegate_task brief and checking what comes back."
 version: 1.0.0
-author: hermes-plugins contributors
+author: 42-evey
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

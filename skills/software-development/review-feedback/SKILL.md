@@ -2,7 +2,7 @@
 name: review-feedback
 description: "On receiving code review or PR comments, before any change."
 version: 1.0.0
-author: hermes-plugins contributors
+author: 42-evey
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

@@ -2,7 +2,7 @@
 name: work-ledger
 description: "Multi-session or long work that must survive compaction."
 version: 1.0.0
-author: hermes-plugins contributors
+author: 42-evey
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

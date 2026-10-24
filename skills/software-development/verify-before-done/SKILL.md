@@ -2,7 +2,7 @@
 name: verify-before-done
 description: "Before claiming work is fixed, done, passing or deployed."
 version: 1.0.0
-author: hermes-plugins contributors
+author: 42-evey
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

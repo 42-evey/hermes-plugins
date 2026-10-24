@@ -2,7 +2,7 @@
 name: plan-before-building
 description: "Before multi-step builds: design, plan, one approval round."
 version: 1.0.0
-author: hermes-plugins contributors
+author: 42-evey
 license: MIT
 platforms: [linux, macos, windows]
 metadata:

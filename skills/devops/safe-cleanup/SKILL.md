@@ -2,7 +2,7 @@
 name: safe-cleanup
 description: "Before deletes, overwrites, kills or test runs on user data."
 version: 1.0.0
-author: hermes-plugins contributors
+author: 42-evey
 license: MIT
 platforms: [linux, macos]
 metadata:
