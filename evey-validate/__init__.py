@@ -17,6 +17,15 @@ import re
 _CTX = None  # set by register(); LLM calls go through ctx.llm
 
 
+# Some thinking models put their reasoning inline in the reply text. Drop it,
+# including an unclosed block cut off by max_tokens.
+_REASONING = re.compile(r"(?is)<(think|thinking|reasoning)>.*?(?:</\1>|$)")
+
+
+def _visible(text):
+    return _REASONING.sub("", text or "").strip()
+
+
 def call_llm(prompt, max_tokens=200, temperature=0.3):
     """One completion on the user's active model. Returns text or None."""
     if _CTX is None:
@@ -28,7 +37,7 @@ def call_llm(prompt, max_tokens=200, temperature=0.3):
         )
     except Exception:
         return None
-    return (result.text or "").strip() or None
+    return _visible(result.text) or None
 
 SCHEMA = {
     "name": "validate_output",
@@ -86,7 +95,8 @@ Example: SCORE: 7 | ISSUES: Version number unverified, otherwise solid"""
 
 
 def _validate_llm(prompt):
-    result = call_llm(prompt, max_tokens=100, temperature=0)
+    # Room for a thinking model's reasoning before the "SCORE: N | ISSUES: ..." line.
+    result = call_llm(prompt, max_tokens=512, temperature=0)
     return result or "SCORE: 5 | ISSUES: Validation unavailable"
 
 

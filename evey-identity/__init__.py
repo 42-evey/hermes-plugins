@@ -10,6 +10,7 @@ Reflection runs through Hermes (ctx.llm) on the user's active model.
 
 import json
 import os
+import re
 import time
 from pathlib import Path
 
@@ -17,6 +18,15 @@ SOUL_PATH = Path(os.environ.get("HERMES_HOME", os.path.expanduser("~/.hermes")))
 MAX_LEARNED = 10  # Max learned behaviors to keep
 
 _CTX = None  # set by register(); LLM calls go through ctx.llm
+
+
+# Some thinking models put their reasoning inline in the reply text. Drop it,
+# including an unclosed block cut off by max_tokens.
+_REASONING = re.compile(r"(?is)<(think|thinking|reasoning)>.*?(?:</\1>|$)")
+
+
+def _visible(text):
+    return _REASONING.sub("", text or "").strip()
 
 
 def call_llm(prompt, max_tokens=200, temperature=0.3):
@@ -30,7 +40,7 @@ def call_llm(prompt, max_tokens=200, temperature=0.3):
         )
     except Exception:
         return None
-    return (result.text or "").strip() or None
+    return _visible(result.text) or None
 
 SCHEMA = {
     "name": "update_identity",
@@ -70,7 +80,13 @@ Behavioral rule:"""
 
 def _extract_rule(reflection):
     """Use the active model to distill reflection into a rule."""
-    return call_llm(REFLECT_PROMPT.format(reflection=reflection), max_tokens=50, temperature=0.3)
+    # Room for a thinking model's reasoning; keep only the first line of the answer.
+    text = call_llm(REFLECT_PROMPT.format(reflection=reflection), max_tokens=512, temperature=0.3)
+    for line in (text or "").splitlines():
+        line = line.strip().lstrip("-*• ").strip().strip('"').strip()
+        if line:
+            return line
+    return None
 
 
 def handler(args, **kwargs):

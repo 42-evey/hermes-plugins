@@ -9,6 +9,7 @@ Needs LANGFUSE_HOST, LANGFUSE_PUBLIC_KEY and LANGFUSE_SECRET_KEY.
 
 import json
 import os
+import re
 import time
 import urllib.request
 import urllib.error
@@ -24,6 +25,15 @@ EMBED_MODEL = "snowflake-arctic-embed2"
 _CTX = None  # set by register(); LLM calls go through ctx.llm
 
 
+# Some thinking models put their reasoning inline in the reply text. Drop it,
+# including an unclosed block cut off by max_tokens.
+_REASONING = re.compile(r"(?is)<(think|thinking|reasoning)>.*?(?:</\1>|$)")
+
+
+def _visible(text):
+    return _REASONING.sub("", text or "").strip()
+
+
 def call_llm(prompt, max_tokens=200, temperature=0.3):
     """One completion on the user's active model. Returns text or None."""
     if _CTX is None:
@@ -35,7 +45,7 @@ def call_llm(prompt, max_tokens=200, temperature=0.3):
         )
     except Exception:
         return None
-    return (result.text or "").strip() or None
+    return _visible(result.text) or None
 CHAR_LIMIT = 4200
 
 SCORE_PROMPT = """Rate the importance of this fact for an AI agent's long-term memory (1-10).
@@ -115,12 +125,13 @@ def _extract_facts(trace_summaries):
 
 def _score_fact(fact):
     """Score a fact's importance (1-10) using the active model."""
-    text = call_llm(SCORE_PROMPT.format(fact=fact), max_tokens=5, temperature=0)
+    # No per-call reasoning switch in ctx.llm: leave room for a thinking
+    # model's reasoning, then take the first 1-10 number in the reply.
+    text = call_llm(SCORE_PROMPT.format(fact=fact), max_tokens=512, temperature=0)
     if text:
-        try:
-            return int("".join(c for c in text if c.isdigit())[:2])
-        except ValueError:
-            pass
+        match = re.search(r"\b(10|[1-9])\b", text)
+        if match:
+            return int(match.group(1))
     return 5
 
 

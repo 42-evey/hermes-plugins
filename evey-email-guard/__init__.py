@@ -18,6 +18,15 @@ import re
 _CTX = None  # set by register(); LLM calls go through ctx.llm
 
 
+# Some thinking models put their reasoning inline in the reply text. Drop it,
+# including an unclosed block cut off by max_tokens.
+_REASONING = re.compile(r"(?is)<(think|thinking|reasoning)>.*?(?:</\1>|$)")
+
+
+def _visible(text):
+    return _REASONING.sub("", text or "").strip()
+
+
 def call_llm(prompt, max_tokens=200, temperature=0.3):
     """One completion on the user's active model. Returns text or None."""
     if _CTX is None:
@@ -29,7 +38,7 @@ def call_llm(prompt, max_tokens=200, temperature=0.3):
         )
     except Exception:
         return None
-    return (result.text or "").strip() or None
+    return _visible(result.text) or None
 
 # Regex patterns that indicate prompt injection attempts
 INJECTION_PATTERNS = [
@@ -125,18 +134,15 @@ def _llm_classify(content):
     """Use a classifier call to classify the email."""
     try:
         prompt = SCREENING_PROMPT.format(content=content[:2000])
-        reply = call_llm(prompt, max_tokens=10, temperature=0)
+        # No per-call reasoning switch in ctx.llm: leave room for a thinking
+        # model's reasoning, then take the first verdict word in the reply.
+        reply = call_llm(prompt, max_tokens=512, temperature=0)
 
         if not reply:
             return "safe"  # Default safe if screening fails
 
-        reply = reply.upper()
-        if "BLOCKED" in reply:
-            return "blocked"
-        elif "SUSPICIOUS" in reply:
-            return "suspicious"
-        else:
-            return "safe"
+        verdict = re.search(r"\b(SAFE|SUSPICIOUS|BLOCKED)\b", reply, re.IGNORECASE)
+        return verdict.group(1).lower() if verdict else "safe"
 
     except Exception as e:
         # If screening fails, default to suspicious (fail-safe)
