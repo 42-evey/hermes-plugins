@@ -138,11 +138,13 @@ def _llm_classify(content):
         # model's reasoning, then take the first verdict word in the reply.
         reply = call_llm(prompt, max_tokens=512, temperature=0)
 
+        # No reply or no verdict word means the email was never screened, which is
+        # not the same as screened clean: report it as unverified, never as safe.
         if not reply:
-            return "safe"  # Default safe if screening fails
+            return "unverified"
 
         verdict = re.search(r"\b(SAFE|SUSPICIOUS|BLOCKED)\b", reply, re.IGNORECASE)
-        return verdict.group(1).lower() if verdict else "safe"
+        return verdict.group(1).lower() if verdict else "unverified"
 
     except Exception as e:
         # If screening fails, default to suspicious (fail-safe)
@@ -173,6 +175,9 @@ def handler(args, **kwargs):
         elif llm_verdict == "suspicious":
             verdict = "suspicious"
             reason = "LLM flagged as potentially manipulative"
+        elif llm_verdict == "unverified":
+            verdict = "suspicious"
+            reason = "No injection patterns, but the classifier returned no verdict"
         else:
             verdict = "safe"
             reason = "No injection patterns, LLM classified as safe"
